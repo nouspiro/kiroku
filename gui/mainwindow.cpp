@@ -22,6 +22,9 @@
 #include "ui_mainwindow.h"
 #include <QDebug>
 #include <QFileDialog>
+#include <QProcess>
+#include <QMessageBox>
+#include <QRegExp>
 
 void MainWindow::setupCodecList()
 {
@@ -38,6 +41,52 @@ void MainWindow::setupCodecList()
     ui->audioCodec->setCurrentIndex(ui->audioCodec->findData(QString("voaacenc")));
 }
 
+void MainWindow::setupAudioInputs()
+{
+    QProcess pactl;
+    QStringList args;
+    args << "list" << "short" << "sources";
+    pactl.start("pactl", args);
+    if(!pactl.waitForFinished())
+    {
+        QMessageBox::critical(this, tr("Can't list PulseAudio sources"), tr("Can't get list of input audio sources. Check if pactl utility is installed."));
+        return;
+    }
+
+    QStringList out = QString(pactl.readAll()).split('\n');
+    QRegExp regexp("\\t([^\\s]+)\\s");
+
+    QStringList sources;
+    foreach(QString devName, out)
+    {
+        if(devName.isEmpty())continue;
+        regexp.indexIn(devName);
+        sources << regexp.cap(1);
+    }
+
+    GstElement *pipeline, *device, *fakesink;
+    pipeline = gst_pipeline_new(NULL);
+    device = gst_element_factory_make("pulsesrc", NULL);
+    fakesink = gst_element_factory_make("fakesink", NULL);
+    gst_bin_add_many(GST_BIN(pipeline), device, fakesink, NULL);
+    gst_element_link(device, fakesink);
+
+    gst_element_set_state(pipeline, GST_STATE_PLAYING);
+    gst_element_get_state(pipeline, NULL, NULL, GST_CLOCK_TIME_NONE);
+
+    foreach(QString source, sources)
+    {
+        gchar *deviceName;
+        QByteArray devstring = source.toLatin1();
+        g_object_set(G_OBJECT(device), "device", devstring.data(), NULL);
+        g_object_get(device, "device-name", &deviceName, NULL);
+        ui->audioInput->addItem(deviceName, source);
+        g_free(deviceName);
+    }
+    gst_element_set_state(pipeline, GST_STATE_NULL);
+    gst_object_unref(pipeline);
+}
+
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
     ui(new Ui::MainWindow)
@@ -50,6 +99,7 @@ MainWindow::MainWindow(QWidget *parent) :
     ui->outputDir->setText(QDir::homePath()+"/Video");
 
     setupCodecList();
+    setupAudioInputs();
 
     recorder = new Recorder(this);
 }

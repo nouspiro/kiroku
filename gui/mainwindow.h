@@ -38,6 +38,7 @@ class MainWindow : public QMainWindow
     Recorder *recorder;
     QTimer *timer;
     void setupCodecList();
+    void setupAudioInputs();
 public:
     explicit MainWindow(QWidget *parent = 0);
     ~MainWindow();
