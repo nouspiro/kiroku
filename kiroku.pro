@@ -2,4 +2,5 @@ TEMPLATE = subdirs
 
 SUBDIRS += \
     gui \
-    lib
+    lib32 \
+    lib64

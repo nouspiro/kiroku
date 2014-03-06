@@ -5,26 +5,19 @@
 #-------------------------------------------------
 
 QT       -= core gui
+CONFIG -= qt
 
 TARGET = kiroku
 TEMPLATE = lib
 
 DEFINES += KIROKU_LIBRARY
 
-SOURCES += intercept.cpp \
-    sharedmemory.cpp
+SOURCES += ../lib/intercept.cpp \
+    ../lib/sharedmemory.cpp
 
-HEADERS += intercept.h \
-    sharedmemory.h
+HEADERS += ../lib/intercept.h \
+    ../lib/sharedmemory.h
 
 LIBS += -lrt -dl
 
-LIBS += -m32
-
 QMAKE_CXXFLAGS += -std=gnu++0x
-QMAKE_CXXFLAGS += -m32
-
-unix {
-    target.path = /usr/lib
-    INSTALLS += target
-}

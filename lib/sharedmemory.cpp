@@ -55,7 +55,13 @@ SharedMemory::SharedMemory(const char *name, Mode mode) :
 
     size = sizeof(SegmentHeader);
     fd = shm_open(name, O_CREAT | O_RDWR, S_IRUSR | S_IWUSR);
-    if(mode==Master)ftruncate(fd, size);
+    int r=0;
+    if(mode==Master)r = ftruncate(fd, size);
+    if(r)
+    {
+        std::cerr << "Can't resize file" << std::endl;
+        return;
+    }
     rptr = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
 
     if(mode==Master)
@@ -75,7 +81,13 @@ void SharedMemory::resize(size_t _size)
 {
     if(rptr)munmap(rptr, size);
     size = _size+sizeof(SegmentHeader);
-    if(mode==Master)ftruncate(fd, size);
+    if(mode==Master)
+    {
+        if(ftruncate(fd, size))
+        {
+            std::cerr << "Can'ŧ resize memory" << std::endl;
+        }
+    }
     rptr = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
     if(mode==Master)SH_SIZE(rptr) = size;
 }
