@@ -34,23 +34,23 @@ typedef void* (*PFNDLSYMPROC)(void*, const char*);
 
 static void* (*o_dlsym) ( void *handle, const char *name )=0;
 
-extern "C" void *glXGetProcAddress(const GLubyte * str) {
-    return dlsym(RTLD_DEFAULT, (char *) str);
-}
+//extern "C" void *glXGetProcAddress(const GLubyte * str) {
+//    return dlsym(RTLD_DEFAULT, (char *) str);
+//}
 
-extern "C" void *glXGetProcAddressARB (const GLubyte * str) {
-    return dlsym(RTLD_DEFAULT, (char *) str);
-}
+//extern "C" void *glXGetProcAddressARB (const GLubyte * str) {
+//    return dlsym(RTLD_DEFAULT, (char *) str);
+//}
 
 extern "C" void *dlsym(void *handle, const char *name)
 {
-    if(strcmp(name, "glXGetProcAddressARB") == 0){
-        return (void *)glXGetProcAddressARB;
-    }
+//    if(strcmp(name, "glXGetProcAddressARB") == 0){
+//        return (void *)glXGetProcAddressARB;
+//    }
 
-    if(strcmp(name, "glXGetProcAddress") == 0){
-        return (void *)glXGetProcAddress;
-    }
+//    if(strcmp(name, "glXGetProcAddress") == 0){
+//        return (void *)glXGetProcAddress;
+//    }
 
     if(!o_dlsym){
         o_dlsym = (void*(*)(void *handle, const char *name)) dlvsym(RTLD_NEXT,"dlsym", "GLIBC_2.0");
@@ -82,7 +82,7 @@ void glXSwapBuffers(Display *dpy, GLXDrawable drawable)
     if(_glXSwapBuffers==0)
     {
         _glXSwapBuffers = (PFNGLXSWAPBUFFERSPROC)dlsym(RTLD_NEXT, "glXSwapBuffers");
-        cout << "INIT GLCAPTURE" << endl;
+        cout << "INIT KIROKU" << endl;
     }
 
     GLint viewport[4];

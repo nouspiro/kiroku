@@ -32,10 +32,10 @@ void MainWindow::setupCodecList()
     StringPairList audioList = Recorder::codecsForFormat(GST_ELEMENT_FACTORY_TYPE_AUDIO_ENCODER, "matroskamux");
 
     foreach(StringPair pair, videoList)
-        ui->videoCodec->addItem(pair.first, pair.second);
+        ui->videoCodec->addItem(pair.first, pair.second.toLatin1());
 
     foreach(StringPair pair, audioList)
-        ui->audioCodec->addItem(pair.first, pair.second);
+        ui->audioCodec->addItem(pair.first, pair.second.toLatin1());
 
     ui->videoCodec->setCurrentIndex(ui->videoCodec->findData(QString("x264enc")));
     ui->audioCodec->setCurrentIndex(ui->audioCodec->findData(QString("voaacenc")));
@@ -80,7 +80,7 @@ void MainWindow::setupAudioInputs()
         QByteArray devstring = source.toLatin1();
         g_object_set(G_OBJECT(device), "device", devstring.data(), NULL);
         g_object_get(device, "device-name", &deviceName, NULL);
-        ui->audioInput->addItem(deviceName, source);
+        ui->audioInput->addItem(deviceName, source.toLatin1());
         g_free(deviceName);
     }
     gst_element_set_state(pipeline, GST_STATE_NULL);
@@ -130,6 +130,7 @@ void MainWindow::startRecording()
     settings.videoCodec = ui->videoCodec->itemData(ui->videoCodec->currentIndex()).toByteArray();
     settings.audioCodec = ui->audioCodec->itemData(ui->audioCodec->currentIndex()).toByteArray();
     settings.outputFile = QDir(ui->outputDir->text()).filePath("out.mkv");
+    settings.audioSource = ui->audioInput->itemData(ui->audioInput->currentIndex()).toByteArray();
     recorder->initRecorder(settings);
     recorder->startRecording();
     timer->start(40);

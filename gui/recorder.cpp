@@ -49,7 +49,7 @@ void Recorder::initRecorder(RecorderSetting settings)
 
     pipeline = new RecorderPipeline(this);
     videoBin = new VideoBin(settings.width, settings.heigh, pipeline);
-    audioBin = new AudioBin(pipeline);
+    audioBin = new AudioBin(settings.audioSource, pipeline);
 
     GstElement *videoEncoder = gst_element_factory_make(settings.videoCodec.constData(), NULL);
     GstElement *audioEncoder = gst_element_factory_make(settings.audioCodec.constData(), NULL);

@@ -58,7 +58,7 @@ class AudioBin : public RecorderBin
 {
     GstElement *src, *audioconvert;
 public:
-    explicit AudioBin(RecorderPipeline *pipeline = 0);
+    explicit AudioBin(const QByteArray &device, RecorderPipeline *pipeline = 0);
     ~AudioBin();
     void sendEos();
 };

@@ -33,6 +33,7 @@ struct RecorderSetting
     QByteArray videoCodec;
     QByteArray audioCodec;
     QString outputFile;
+    QByteArray audioSource;
     RecorderSetting(int w = 0, int h = 0);
 };
 

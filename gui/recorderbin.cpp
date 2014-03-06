@@ -126,7 +126,7 @@ void VideoBin::enoughData()
     enough.store(1);
 }
 
-AudioBin::AudioBin(RecorderPipeline *pipeline) : RecorderBin(pipeline)
+AudioBin::AudioBin(const QByteArray &device, RecorderPipeline *pipeline) : RecorderBin(pipeline)
 {
     src = gst_element_factory_make("pulsesrc", NULL);
     audioconvert = gst_element_factory_make("audioconvert", NULL);
@@ -136,7 +136,7 @@ AudioBin::AudioBin(RecorderPipeline *pipeline) : RecorderBin(pipeline)
     g_object_set(filter, "caps", caps, NULL);
     gst_caps_unref(caps);
 
-    g_object_set(src, "device", "alsa_output.pci-0000_00_14.2.analog-stereo.monitor", NULL);
+    g_object_set(src, "device", device.constData(), NULL);
 
     gst_bin_add_many(GST_BIN(bin), src, filter, audioconvert, NULL);
     gst_element_link_many(src, filter, audioconvert, NULL);
