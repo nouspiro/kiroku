@@ -80,7 +80,7 @@ void MainWindow::setupAudioInputs()
         QByteArray devstring = source.toLatin1();
         g_object_set(G_OBJECT(device), "device", devstring.data(), NULL);
         g_object_get(device, "device-name", &deviceName, NULL);
-        ui->audioInput->addItem(deviceName, source.toLatin1());
+        ui->audioInput->addItem(QString::fromUtf8(deviceName), source.toLatin1());
         g_free(deviceName);
     }
     gst_element_set_state(pipeline, GST_STATE_NULL);
@@ -94,6 +94,11 @@ MainWindow::MainWindow(QWidget *parent) :
     ui->setupUi(this);
     timer = new QTimer(this);
     mem = new SharedMemory("/kiroku-frame", SharedMemory::Slave);
+    if(mem->error()!=0)
+    {
+        QMessageBox::critical(this, tr("Shared Memory Error"),
+                              tr("There is error during shared memory initialization. Does OpenGL application run?"));
+    }
     connect(timer, SIGNAL(timeout()), this, SLOT(grabFrame()));
 
     ui->outputDir->setText(QDir::homePath()+"/Video");
@@ -120,6 +125,7 @@ void MainWindow::browseDir()
 void MainWindow::startRecording()
 {
     int x,y;
+    if(mem->error()!=0)return;
     mem->autoResize();
     uchar *data = (uchar*)mem->lock();
     x = ((int*)data)[0];

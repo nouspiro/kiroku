@@ -44,7 +44,7 @@ class VideoBin : public RecorderBin
     int width, height;
     GstVideoInfo info;
     GstElement *appsrc, *videorate, *flip, *videoconvert;
-    QAtomicInt enough;
+    bool enough;
 public:
     explicit VideoBin(int w, int h, RecorderPipeline *pipeline = 0);
     ~VideoBin();

@@ -46,37 +46,7 @@ Recorder::~Recorder()
 void Recorder::initRecorder(RecorderSetting settings)
 {
     this->settings = settings;
-
-    pipeline = new RecorderPipeline(this);
-    videoBin = new VideoBin(settings.width, settings.heigh, pipeline);
-    audioBin = new AudioBin(settings.audioSource, pipeline);
-
-    GstElement *videoEncoder = gst_element_factory_make(settings.videoCodec.constData(), NULL);
-    GstElement *audioEncoder = gst_element_factory_make(settings.audioCodec.constData(), NULL);
-    GstElement *mux = gst_element_factory_make("matroskamux", NULL);
-    GstElement *sink = gst_element_factory_make("filesink", NULL);
-
-    pipeline->addToPipeline(videoEncoder);
-    pipeline->addToPipeline(audioEncoder);
-    pipeline->addToPipeline(mux);
-    pipeline->addToPipeline(sink);
-    g_object_set(videoEncoder, "speed-preset", 1, "bitrate", 10000, NULL);
-    QByteArray path = QFile::encodeName(settings.outputFile);
-    g_object_set(sink, "location", path.data(), NULL);
-    gst_element_link_many(videoEncoder, mux, sink, NULL);
-    gst_element_link(audioEncoder, mux);
-
-    GstPad *srcpad = videoBin->getSrcPad();
-    GstPad *sinkpad = gst_element_get_static_pad(videoEncoder, "sink");
-    gst_pad_link(srcpad, sinkpad);
-    gst_object_unref(srcpad);
-    gst_object_unref(sinkpad);
-
-    srcpad = audioBin->getSrcPad();
-    sinkpad = gst_element_get_static_pad(audioEncoder, "sink");
-    gst_pad_link(srcpad, sinkpad);
-    gst_object_unref(srcpad);
-    gst_object_unref(sinkpad);
+    setupPipeline();
 }
 
 void Recorder::startRecording()
@@ -86,15 +56,11 @@ void Recorder::startRecording()
 
 void Recorder::stopRecording()
 {
-    //pipeline->sendEos();
-    videoBin->sendEos();
-    audioBin->sendEos();
-    //delete videoBin;
-    //delete audioBin;
-    //delete pipeline;
-    //pipeline = 0;
-    //videoBin = 0;
-    //audioBin = 0;
+    if(videoBin && audioBin)
+    {
+        videoBin->sendEos();
+        audioBin->sendEos();
+    }
 }
 
 void Recorder::pushFrame(const void *data)
@@ -158,4 +124,42 @@ StringPairList Recorder::codecsForFormat(GstElementFactoryListType type, const Q
 
     gst_object_unref(factory);
     return codecs;
+}
+
+void Recorder::setupPipeline()
+{
+    delete videoBin;
+    delete audioBin;
+    delete pipeline;
+
+    pipeline = new RecorderPipeline(this);
+    videoBin = new VideoBin(settings.width, settings.heigh, pipeline);
+    audioBin = new AudioBin(settings.audioSource, pipeline);
+
+    GstElement *videoEncoder = gst_element_factory_make(settings.videoCodec.constData(), NULL);
+    GstElement *audioEncoder = gst_element_factory_make(settings.audioCodec.constData(), NULL);
+    GstElement *mux = gst_element_factory_make("matroskamux", NULL);
+    GstElement *sink = gst_element_factory_make("filesink", NULL);
+
+    pipeline->addToPipeline(videoEncoder);
+    pipeline->addToPipeline(audioEncoder);
+    pipeline->addToPipeline(mux);
+    pipeline->addToPipeline(sink);
+    g_object_set(videoEncoder, "speed-preset", 1, "bitrate", 10000, NULL);
+    QByteArray path = QFile::encodeName(settings.outputFile);
+    g_object_set(sink, "location", path.data(), NULL);
+    gst_element_link_many(videoEncoder, mux, sink, NULL);
+    gst_element_link(audioEncoder, mux);
+
+    GstPad *srcpad = videoBin->getSrcPad();
+    GstPad *sinkpad = gst_element_get_static_pad(videoEncoder, "sink");
+    gst_pad_link(srcpad, sinkpad);
+    gst_object_unref(srcpad);
+    gst_object_unref(sinkpad);
+
+    srcpad = audioBin->getSrcPad();
+    sinkpad = gst_element_get_static_pad(audioEncoder, "sink");
+    gst_pad_link(srcpad, sinkpad);
+    gst_object_unref(srcpad);
+    gst_object_unref(sinkpad);
 }

@@ -57,6 +57,8 @@ public:
 
     static StringPairList getElementsForCaps(GstElementFactoryListType type, QList<GstCaps *> capsList);
     static StringPairList codecsForFormat(GstElementFactoryListType type, const QString &format);
+protected:
+    void setupPipeline();
 };
 
 #endif // RECORDER_H

@@ -38,9 +38,10 @@ public:
     void unlock();
     void autoResize();
     size_t getSize();
+    int error();
 private:
     Mode mode;
-    int fd;
+    int fd, err;
     void *rptr;
     size_t size;
     char name[256];

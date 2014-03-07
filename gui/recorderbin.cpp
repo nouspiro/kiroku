@@ -103,7 +103,7 @@ VideoBin::~VideoBin()
 
 void VideoBin::pushFrame(const void *data)
 {
-    if(enough.load())return;
+    if(enough)return;
     void *tmp = g_malloc(info.size);
     memcpy(tmp, data, info.size);
     GstBuffer *buffer = gst_buffer_new_wrapped(tmp, info.size);
@@ -118,12 +118,12 @@ void VideoBin::sendEos()
 void VideoBin::needData(guint lenght)
 {
     Q_UNUSED(lenght);
-    enough.store(0);
+    enough = false;
 }
 
 void VideoBin::enoughData()
 {
-    enough.store(1);
+    enough = true;
 }
 
 AudioBin::AudioBin(const QByteArray &device, RecorderPipeline *pipeline) : RecorderBin(pipeline)

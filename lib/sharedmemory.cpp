@@ -47,14 +47,20 @@ int sys_futex(void *addr1, int op, int val, const struct timespec *timeout, void
 #define xchg(P, N) __sync_lock_test_and_set((P), (N))
 
 SharedMemory::SharedMemory(const char *name, Mode mode) :
-    mode(mode)
+    mode(mode),
+    err(0)
 {
     strcpy(this->name, name);
 
     std::cout << "init sharedmemory " << sizeof(SegmentHeader) << std::endl;
 
     size = sizeof(SegmentHeader);
-    fd = shm_open(name, O_CREAT | O_RDWR, S_IRUSR | S_IWUSR);
+    fd = shm_open(name, mode==Master ? (O_CREAT | O_RDWR) : O_RDWR, S_IRUSR | S_IWUSR);
+    if(fd<0)
+    {
+        err = errno;
+        return;
+    }
     int r=0;
     if(mode==Master)r = ftruncate(fd, size);
     if(r)
@@ -74,6 +80,7 @@ SharedMemory::SharedMemory(const char *name, Mode mode) :
 SharedMemory::~SharedMemory()
 {
     munmap(rptr, size);
+    close(fd);
     if(mode==Master)shm_unlink(name);
 }
 
@@ -123,5 +130,10 @@ void SharedMemory::autoResize()
 size_t SharedMemory::getSize()
 {
     return SH_SIZE(rptr);
+}
+
+int SharedMemory::error()
+{
+    return err;
 }
 
