@@ -34,6 +34,12 @@ public:
     explicit RecorderPipeline(QObject *parent = 0);
     ~RecorderPipeline();
     void addToPipeline(GstElement *element);
+    template<typename ... T>
+    void addToPipeline(GstElement *element, T ... rest)
+    {
+        addToPipeline(element);
+        addToPipeline(rest...);
+    }
     GstElement *getPipeline();
     void start();
     void stop();

@@ -25,6 +25,7 @@
 #include <QTimer>
 #include "../lib/sharedmemory.h"
 #include "recorder.h"
+#include "videooverlay.h"
 
 namespace Ui {
 class MainWindow;
@@ -36,6 +37,7 @@ class MainWindow : public QMainWindow
     Ui::MainWindow *ui;
     SharedMemory *mem;
     Recorder *recorder;
+    VideoOverlay *videoOverlay;
     QTimer *timer;
     void setupCodecList();
     void setupAudioInputs();

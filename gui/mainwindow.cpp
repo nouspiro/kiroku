@@ -97,16 +97,21 @@ MainWindow::MainWindow(QWidget *parent) :
     if(mem->error()!=0)
     {
         QMessageBox::critical(this, tr("Shared Memory Error"),
-                              tr("There is error during shared memory initialization. Does OpenGL application run?"));
+                              tr("There is error during shared memory initialization. Does OpenGL application run?\n"
+                                 "Run OpenGL application with LD_PRELOAD=libkiroku.so first."));
     }
     connect(timer, SIGNAL(timeout()), this, SLOT(grabFrame()));
 
     ui->outputDir->setText(QDir::homePath()+"/Video");
 
+    videoOverlay = new VideoOverlay(this);
+    ui->verticalLayout->addWidget(videoOverlay, 1);
+
     setupCodecList();
     setupAudioInputs();
 
     recorder = new Recorder(this);
+    recorder->setVideoOverlay(videoOverlay->winId());
 }
 
 MainWindow::~MainWindow()

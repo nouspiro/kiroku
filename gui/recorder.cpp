@@ -20,6 +20,7 @@
 
 #include "recorder.h"
 #include <gst/gstutils.h>
+#include <gst/video/videooverlay.h>
 #include <QStringList>
 #include <QDebug>
 #include <QFile>
@@ -66,6 +67,11 @@ void Recorder::stopRecording()
 void Recorder::pushFrame(const void *data)
 {
     videoBin->pushFrame(data);
+}
+
+void Recorder::setVideoOverlay(WId id)
+{
+    winID = id;
 }
 
 StringPairList Recorder::getElementsForCaps(GstElementFactoryListType type, QList<GstCaps*> capsList)
@@ -140,19 +146,32 @@ void Recorder::setupPipeline()
     GstElement *audioEncoder = gst_element_factory_make(settings.audioCodec.constData(), NULL);
     GstElement *mux = gst_element_factory_make("matroskamux", NULL);
     GstElement *sink = gst_element_factory_make("filesink", NULL);
+    GstElement *xvsink = gst_element_factory_make("xvimagesink", NULL);
+    GstElement *videoTee = gst_element_factory_make("tee", NULL);
+    GstElement *queue = gst_element_factory_make("queue", NULL);
+    GstElement *filter = gst_element_factory_make("capsfilter", NULL);
 
-    pipeline->addToPipeline(videoEncoder);
-    pipeline->addToPipeline(audioEncoder);
-    pipeline->addToPipeline(mux);
-    pipeline->addToPipeline(sink);
-    g_object_set(videoEncoder, "speed-preset", 1, "bitrate", 10000, NULL);
+    gst_video_overlay_set_window_handle(GST_VIDEO_OVERLAY(xvsink), winID);
+
+    pipeline->addToPipeline(videoEncoder, audioEncoder, mux, sink, xvsink, videoTee, queue, filter);
+
+    GstCaps *caps = gst_caps_from_string("video/x-raw,format=I420");
+    g_object_set(filter, "caps", caps, NULL);
+    gst_caps_unref(caps);
+
+    if(settings.videoCodec=="x264enc")g_object_set(videoEncoder, "speed-preset", 1, "bitrate", 10000, NULL);
+
     QByteArray path = QFile::encodeName(settings.outputFile);
     g_object_set(sink, "location", path.data(), NULL);
-    gst_element_link_many(videoEncoder, mux, sink, NULL);
+
+    g_object_set(xvsink, "sync", FALSE, NULL);
+
+    gst_element_link_many(videoTee, videoEncoder, mux, sink, NULL);
+    gst_element_link_many(videoTee, queue, filter, xvsink, NULL);
     gst_element_link(audioEncoder, mux);
 
     GstPad *srcpad = videoBin->getSrcPad();
-    GstPad *sinkpad = gst_element_get_static_pad(videoEncoder, "sink");
+    GstPad *sinkpad = gst_element_get_static_pad(videoTee, "sink");
     gst_pad_link(srcpad, sinkpad);
     gst_object_unref(srcpad);
     gst_object_unref(sinkpad);

@@ -21,6 +21,7 @@
 #ifndef RECORDER_H
 #define RECORDER_H
 
+#include <QWidget>
 #include <QObject>
 #include <QPair>
 #include "recorderpipeline.h"
@@ -47,6 +48,7 @@ class Recorder : public QObject
     RecorderPipeline *pipeline;
     VideoBin *videoBin;
     AudioBin *audioBin;
+    WId winID;
 public:
     explicit Recorder(QObject *parent = 0);
     ~Recorder();
@@ -54,6 +56,7 @@ public:
     void startRecording();
     void stopRecording();
     void pushFrame(const void *data);
+    void setVideoOverlay(WId id);
 
     static StringPairList getElementsForCaps(GstElementFactoryListType type, QList<GstCaps *> capsList);
     static StringPairList codecsForFormat(GstElementFactoryListType type, const QString &format);
