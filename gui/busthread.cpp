@@ -53,6 +53,7 @@ void BusThread::run()
             }
             emit newMessage(msg);
         }
+        else QThread::msleep(100);
     }
     thread->exit();
 }
