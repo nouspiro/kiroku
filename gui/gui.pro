@@ -33,6 +33,6 @@ HEADERS  += mainwindow.h \
 
 QMAKE_CXXFLAGS += -std=gnu++0x
 
-LIBS += -lrt
+LIBS += -lrt -lX11
 
 FORMS    += mainwindow.ui

@@ -149,15 +149,10 @@ void Recorder::setupPipeline()
     GstElement *xvsink = gst_element_factory_make("xvimagesink", NULL);
     GstElement *videoTee = gst_element_factory_make("tee", NULL);
     GstElement *queue = gst_element_factory_make("queue", NULL);
-    GstElement *filter = gst_element_factory_make("capsfilter", NULL);
 
     gst_video_overlay_set_window_handle(GST_VIDEO_OVERLAY(xvsink), winID);
 
-    pipeline->addToPipeline(videoEncoder, audioEncoder, mux, sink, xvsink, videoTee, queue, filter);
-
-    GstCaps *caps = gst_caps_from_string("video/x-raw,format=I420");
-    g_object_set(filter, "caps", caps, NULL);
-    gst_caps_unref(caps);
+    pipeline->addToPipeline(videoEncoder, audioEncoder, mux, sink, xvsink, videoTee, queue);
 
     if(settings.videoCodec=="x264enc")g_object_set(videoEncoder, "speed-preset", 1, "bitrate", 10000, NULL);
 
@@ -167,7 +162,7 @@ void Recorder::setupPipeline()
     g_object_set(xvsink, "sync", FALSE, NULL);
 
     gst_element_link_many(videoTee, videoEncoder, mux, sink, NULL);
-    gst_element_link_many(videoTee, queue, filter, xvsink, NULL);
+    gst_element_link_many(videoTee, queue, xvsink, NULL);
     gst_element_link(audioEncoder, mux);
 
     GstPad *srcpad = videoBin->getSrcPad();

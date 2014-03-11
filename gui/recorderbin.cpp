@@ -38,23 +38,30 @@ void enoughDataCallback(GstAppSrc *src, gpointer user_data)
 }
 }
 
-RecorderBin::RecorderBin(RecorderPipeline *pipeline) : QObject(pipeline)
+void SourceBin::setupSrcPad(GstElement *element, const char *name)
+{
+    GstPad *pad = gst_element_get_static_pad(element, name);
+    gst_element_add_pad(bin, gst_ghost_pad_new("src", pad));
+    gst_object_unref(pad);
+}
+
+SourceBin::SourceBin(RecorderPipeline *pipeline) : QObject(pipeline)
 {
     bin = gst_bin_new(NULL);
     if(pipeline)pipeline->addToPipeline(GST_ELEMENT(gst_object_ref(bin)));
 }
 
-RecorderBin::~RecorderBin()
+SourceBin::~SourceBin()
 {
     gst_object_unref(bin);
 }
 
-GstPad *RecorderBin::getSrcPad()
+GstPad *SourceBin::getSrcPad()
 {
     return gst_element_get_static_pad(bin, "src");
 }
 
-VideoBin::VideoBin(int w, int h, RecorderPipeline *pipeline) : RecorderBin(pipeline),
+VideoBin::VideoBin(int w, int h, RecorderPipeline *pipeline) : SourceBin(pipeline),
     width(w),
     height(h)
 {
@@ -92,9 +99,7 @@ VideoBin::VideoBin(int w, int h, RecorderPipeline *pipeline) : RecorderBin(pipel
 
     gst_bin_add_many(GST_BIN(bin), appsrc, videorate, flip, videoconvert, NULL);
     gst_element_link_many(appsrc, videorate, flip, videoconvert, NULL);
-    GstPad *pad = gst_element_get_static_pad(videoconvert, "src");
-    gst_element_add_pad(bin, gst_ghost_pad_new("src", pad));
-    gst_object_unref(pad);
+    setupSrcPad(videoconvert, "src");
 }
 
 VideoBin::~VideoBin()
@@ -126,7 +131,7 @@ void VideoBin::enoughData()
     enough = true;
 }
 
-AudioBin::AudioBin(const QByteArray &device, RecorderPipeline *pipeline) : RecorderBin(pipeline)
+AudioBin::AudioBin(const QByteArray &device, RecorderPipeline *pipeline) : SourceBin(pipeline)
 {
     src = gst_element_factory_make("pulsesrc", NULL);
     audioconvert = gst_element_factory_make("audioconvert", NULL);
@@ -140,9 +145,7 @@ AudioBin::AudioBin(const QByteArray &device, RecorderPipeline *pipeline) : Recor
 
     gst_bin_add_many(GST_BIN(bin), src, filter, audioconvert, NULL);
     gst_element_link_many(src, filter, audioconvert, NULL);
-    GstPad *pad = gst_element_get_static_pad(audioconvert, "src");
-    gst_element_add_pad(bin, gst_ghost_pad_new("src", pad));
-    gst_object_unref(pad);
+    setupSrcPad(audioconvert, "src");
 }
 
 AudioBin::~AudioBin()
@@ -152,4 +155,29 @@ AudioBin::~AudioBin()
 void AudioBin::sendEos()
 {
     gst_element_send_event(src, gst_event_new_eos());
+}
+
+
+CameraBin::CameraBin(RecorderPipeline *pipeline) : SourceBin(pipeline)
+{
+    src = gst_element_factory_make("v4l2src", NULL);
+    GstElement *videoconvert = gst_element_factory_make("videoconvert", NULL);
+
+    gst_bin_add_many(GST_BIN(bin), src, videoconvert, NULL);
+    gst_element_link(src, videoconvert);
+    setupSrcPad(videoconvert, "src");
+}
+
+CameraBin::~CameraBin()
+{
+}
+
+void CameraBin::sendEos()
+{
+    gst_element_send_event(src, gst_event_new_eos());
+}
+
+void CameraBin::setDevice(const char *device)
+{
+    g_object_set(src, "device", device, NULL);
 }

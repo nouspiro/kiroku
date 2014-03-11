@@ -116,6 +116,7 @@ MainWindow::MainWindow(QWidget *parent) :
 
 MainWindow::~MainWindow()
 {
+    delete recorder;
     delete mem;
     delete ui;
 }

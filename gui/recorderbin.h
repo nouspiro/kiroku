@@ -18,8 +18,8 @@
 *
 ****************************************************************************/
 
-#ifndef RECORDERBIN_H
-#define RECORDERBIN_H
+#ifndef SOURCEBIN_H
+#define SOURCEBIN_H
 
 #include <QObject>
 #include <QAtomicInt>
@@ -28,18 +28,19 @@
 #include <gst/video/video-info.h>
 #include "recorderpipeline.h"
 
-class RecorderBin : public QObject
+class SourceBin : public QObject
 {
 protected:
     GstElement *bin;
+    void setupSrcPad(GstElement *element, const char *name);
 public:
-    explicit RecorderBin(RecorderPipeline *pipeline = 0);
-    virtual ~RecorderBin();
+    explicit SourceBin(RecorderPipeline *pipeline = 0);
+    virtual ~SourceBin();
     GstPad* getSrcPad();
     virtual void sendEos() = 0;
 };
 
-class VideoBin : public RecorderBin
+class VideoBin : public SourceBin
 {
     int width, height;
     GstVideoInfo info;
@@ -54,7 +55,7 @@ public:
     void enoughData();
 };
 
-class AudioBin : public RecorderBin
+class AudioBin : public SourceBin
 {
     GstElement *src, *audioconvert;
 public:
@@ -63,4 +64,14 @@ public:
     void sendEos();
 };
 
-#endif // RECORDERBIN_H
+class CameraBin : public SourceBin
+{
+    GstElement *src;
+public:
+    explicit CameraBin(RecorderPipeline *pipeline = 0);
+    ~CameraBin();
+    void sendEos();
+    void setDevice(const char *device);
+};
+
+#endif // SOURCEBIN_H
