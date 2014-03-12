@@ -36,7 +36,9 @@ RecorderSetting::RecorderSetting(int w, int h) :
 Recorder::Recorder(QObject *parent) : QObject(parent),
     pipeline(0),
     videoBin(0),
-    audioBin(0)
+    audioBin(0),
+    cameraBin(0),
+    compositor(0)
 {
 }
 
@@ -57,16 +59,14 @@ void Recorder::startRecording()
 
 void Recorder::stopRecording()
 {
-    if(videoBin && audioBin)
-    {
-        videoBin->sendEos();
-        audioBin->sendEos();
-    }
+    if(videoBin)videoBin->sendEos();
+    if(audioBin)audioBin->sendEos();
+    if(cameraBin)cameraBin->sendEos();
 }
 
 void Recorder::pushFrame(const void *data)
 {
-    videoBin->pushFrame(data);
+    if(videoBin)videoBin->pushFrame(data);
 }
 
 void Recorder::setVideoOverlay(WId id)
@@ -136,11 +136,15 @@ void Recorder::setupPipeline()
 {
     delete videoBin;
     delete audioBin;
+    delete cameraBin;
+    delete compositor;
     delete pipeline;
 
     pipeline = new RecorderPipeline(this);
     videoBin = new VideoBin(settings.width, settings.heigh, pipeline);
     audioBin = new AudioBin(settings.audioSource, pipeline);
+    //compositor = new VideoCompositor(pipeline);
+    //cameraBin = new CameraBin(pipeline);
 
     GstElement *videoEncoder = gst_element_factory_make(settings.videoCodec.constData(), NULL);
     GstElement *audioEncoder = gst_element_factory_make(settings.audioCodec.constData(), NULL);
@@ -154,7 +158,8 @@ void Recorder::setupPipeline()
 
     pipeline->addToPipeline(videoEncoder, audioEncoder, mux, sink, xvsink, videoTee, queue);
 
-    if(settings.videoCodec=="x264enc")g_object_set(videoEncoder, "speed-preset", 1, "bitrate", 10000, NULL);
+    if(settings.videoCodec=="x264enc")g_object_set(videoEncoder, "speed-preset", 1, "bitrate", 5000, NULL);
+    else g_object_set(videoEncoder, "bitrate", 5000000, NULL);
 
     QByteArray path = QFile::encodeName(settings.outputFile);
     g_object_set(sink, "location", path.data(), NULL);
@@ -165,8 +170,15 @@ void Recorder::setupPipeline()
     gst_element_link_many(videoTee, queue, xvsink, NULL);
     gst_element_link(audioEncoder, mux);
 
-    GstPad *srcpad = videoBin->getSrcPad();
-    GstPad *sinkpad = gst_element_get_static_pad(videoTee, "sink");
+    GstPad *srcpad, *sinkpad;
+
+    //compositor->addSource(srcpad);
+    //srcpad = cameraBin->getSrcPad();
+    //compositor->addSource(srcpad, QRect(0, 0, 640, 480));
+    //srcpad = compositor->getSrcPad();
+
+    srcpad = videoBin->getSrcPad();
+    sinkpad = gst_element_get_static_pad(videoTee, "sink");
     gst_pad_link(srcpad, sinkpad);
     gst_object_unref(srcpad);
     gst_object_unref(sinkpad);

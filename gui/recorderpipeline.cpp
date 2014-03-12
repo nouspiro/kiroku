@@ -86,7 +86,7 @@ void RecorderPipeline::onMessage(GstMessage *msg)
             gst_message_parse_state_changed(msg, &oldState, &newState, NULL);
             qDebug() << "new state" << stateToString(newState);
             //if(newState==GST_STATE_PLAYING)
-                //GST_DEBUG_BIN_TO_DOT_FILE(GST_BIN(pipeline), GST_DEBUG_GRAPH_SHOW_ALL, "recorder");
+            //    GST_DEBUG_BIN_TO_DOT_FILE(GST_BIN(pipeline), GST_DEBUG_GRAPH_SHOW_ALL, "recorder");
             break;
         }
         break;

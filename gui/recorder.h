@@ -26,6 +26,7 @@
 #include <QPair>
 #include "recorderpipeline.h"
 #include "recorderbin.h"
+#include "videocompositor.h"
 
 struct RecorderSetting
 {
@@ -48,6 +49,8 @@ class Recorder : public QObject
     RecorderPipeline *pipeline;
     VideoBin *videoBin;
     AudioBin *audioBin;
+    CameraBin *cameraBin;
+    VideoCompositor *compositor;
     WId winID;
 public:
     explicit Recorder(QObject *parent = 0);

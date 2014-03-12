@@ -77,7 +77,7 @@ VideoBin::VideoBin(int w, int h, RecorderPipeline *pipeline) : SourceBin(pipelin
     info.par_n = info.par_d = 1;
     GstCaps *caps = gst_video_info_to_caps(&info);
 
-    gst_app_src_set_caps(GST_APP_SRC_CAST(appsrc), caps);
+    gst_app_src_set_caps(GST_APP_SRC(appsrc), caps);
     gst_caps_unref(caps);
     GstAppSrcCallbacks callbacks;
     callbacks.enough_data = enoughDataCallback;
@@ -90,10 +90,10 @@ VideoBin::VideoBin(int w, int h, RecorderPipeline *pipeline) : SourceBin(pipelin
                  "format", GST_FORMAT_TIME,
                  "do-timestamp", TRUE,
                  "is-live", TRUE,
-                 "min-latency", 0,
+                 "min-latency", (gint64)0,
                  "blocksize", info.size, NULL);
 
-    g_object_set(videorate, "average-period", GST_MSECOND*10, NULL);
+    g_object_set(videorate, "skip-to-first", TRUE, NULL);
 
     g_object_set(flip, "method", 5, NULL);
 

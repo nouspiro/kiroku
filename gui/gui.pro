@@ -21,7 +21,8 @@ SOURCES += main.cpp\
     recorderpipeline.cpp \
     recorderbin.cpp \
     busthread.cpp \
-    videooverlay.cpp
+    videooverlay.cpp \
+    videocompositor.cpp
 
 HEADERS  += mainwindow.h \
     ../lib/sharedmemory.h \
@@ -29,7 +30,8 @@ HEADERS  += mainwindow.h \
     recorderpipeline.h \
     recorderbin.h \
     busthread.h \
-    videooverlay.h
+    videooverlay.h \
+    videocompositor.h
 
 QMAKE_CXXFLAGS += -std=gnu++0x
 
