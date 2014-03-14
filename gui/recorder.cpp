@@ -147,28 +147,33 @@ void Recorder::setupPipeline()
     //cameraBin = new CameraBin(pipeline);
 
     GstElement *videoEncoder = gst_element_factory_make(settings.videoCodec.constData(), NULL);
-    GstElement *audioEncoder = gst_element_factory_make(settings.audioCodec.constData(), NULL);
     GstElement *mux = gst_element_factory_make("matroskamux", NULL);
     GstElement *sink = gst_element_factory_make("filesink", NULL);
     GstElement *xvsink = gst_element_factory_make("xvimagesink", NULL);
     GstElement *videoTee = gst_element_factory_make("tee", NULL);
-    GstElement *queue = gst_element_factory_make("queue", NULL);
+    GstElement *queue[3];
+    for(int i=0;i<3;i++)
+    {
+        queue[i] = gst_element_factory_make("queue", NULL);
+        pipeline->addToPipeline(queue[i]);
+    }
 
     gst_video_overlay_set_window_handle(GST_VIDEO_OVERLAY(xvsink), winID);
 
-    pipeline->addToPipeline(videoEncoder, audioEncoder, mux, sink, xvsink, videoTee, queue);
+    pipeline->addToPipeline(videoEncoder, mux, sink, xvsink, videoTee);
 
     if(settings.videoCodec=="x264enc")g_object_set(videoEncoder, "speed-preset", 1, "bitrate", 5000, NULL);
-    else g_object_set(videoEncoder, "bitrate", 5000000, NULL);
+    else if(settings.videoCodec=="theoraenc")g_object_set(videoEncoder, "speed-level", 3, NULL);
+    else g_object_set(videoEncoder, "bitrate", 50000000, NULL);
 
     QByteArray path = QFile::encodeName(settings.outputFile);
     g_object_set(sink, "location", path.data(), NULL);
 
     g_object_set(xvsink, "sync", FALSE, NULL);
 
-    gst_element_link_many(videoTee, videoEncoder, mux, sink, NULL);
-    gst_element_link_many(videoTee, queue, xvsink, NULL);
-    gst_element_link(audioEncoder, mux);
+    gst_element_link_many(videoTee, queue[0], videoEncoder, queue[1], mux, sink, NULL);
+    gst_element_link_many(videoTee, queue[2], xvsink, NULL);
+
 
     GstPad *srcpad, *sinkpad;
 
@@ -183,8 +188,18 @@ void Recorder::setupPipeline()
     gst_object_unref(srcpad);
     gst_object_unref(sinkpad);
 
+    if(settings.audioCodec=="audio/x-raw")
+    {
+        sinkpad = gst_element_get_request_pad(mux, "audio_%u");
+    }
+    else
+    {
+        GstElement *audioEncoder = gst_element_factory_make(settings.audioCodec.constData(), NULL);
+        pipeline->addToPipeline(audioEncoder);
+        gst_element_link(audioEncoder, mux);
+        sinkpad = gst_element_get_static_pad(audioEncoder, "sink");
+    }
     srcpad = audioBin->getSrcPad();
-    sinkpad = gst_element_get_static_pad(audioEncoder, "sink");
     gst_pad_link(srcpad, sinkpad);
     gst_object_unref(srcpad);
     gst_object_unref(sinkpad);

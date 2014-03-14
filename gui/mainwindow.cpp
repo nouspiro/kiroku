@@ -31,6 +31,8 @@ void MainWindow::setupCodecList()
     StringPairList videoList = Recorder::codecsForFormat(GST_ELEMENT_FACTORY_TYPE_VIDEO_ENCODER, "matroskamux");
     StringPairList audioList = Recorder::codecsForFormat(GST_ELEMENT_FACTORY_TYPE_AUDIO_ENCODER, "matroskamux");
 
+    audioList.append(StringPair("PCM 16-bit", "audio/x-raw"));
+
     foreach(StringPair pair, videoList)
         ui->videoCodec->addItem(pair.first, pair.second.toLatin1());
 
@@ -144,9 +146,13 @@ void MainWindow::startRecording()
     settings.outputFile = QDir(ui->outputDir->text()).filePath("out.mkv");
     settings.audioSource = ui->audioInput->itemData(ui->audioInput->currentIndex()).toByteArray();
     recorder->initRecorder(settings);
-    recorder->startRecording();
+    QTimer::singleShot(100, this, SLOT(startEncoding()));
     timer->start(40);
+}
 
+void MainWindow::startEncoding()
+{
+    recorder->startRecording();
 }
 
 void MainWindow::stopRecording()

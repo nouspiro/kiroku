@@ -91,9 +91,9 @@ VideoBin::VideoBin(int w, int h, RecorderPipeline *pipeline) : SourceBin(pipelin
                  "do-timestamp", TRUE,
                  "is-live", TRUE,
                  "min-latency", (gint64)0,
-                 "blocksize", info.size, NULL);
+                 "blocksize", (guint)info.size,
+                 "max-bytes", (guint64)info.size*30, NULL);
 
-    g_object_set(videorate, "skip-to-first", TRUE, NULL);
 
     g_object_set(flip, "method", 5, NULL);
 

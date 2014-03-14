@@ -47,6 +47,7 @@ public:
 public slots:
     void browseDir();
     void startRecording();
+    void startEncoding();
     void stopRecording();
     void grabFrame();
 };
