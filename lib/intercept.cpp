@@ -31,26 +31,32 @@ using namespace std;
 
 typedef void (*PFNGLXSWAPBUFFERSPROC)(Display *dpy, GLXDrawable drawable);
 typedef void* (*PFNDLSYMPROC)(void*, const char*);
+typedef void* (*PFNGLXGETPROCADDRESSPROC)(const GLubyte*);
 
-static void* (*o_dlsym) ( void *handle, const char *name )=0;
+static PFNDLSYMPROC o_dlsym = 0;
+static PFNGLXGETPROCADDRESSPROC _glXGetProcAddress = 0;
 
-//extern "C" void *glXGetProcAddress(const GLubyte * str) {
-//    return dlsym(RTLD_DEFAULT, (char *) str);
-//}
+extern "C" void *glXGetProcAddress(const GLubyte * str) {
+    if(_glXGetProcAddress==0)
+        _glXGetProcAddress = (PFNGLXGETPROCADDRESSPROC)o_dlsym(RTLD_NEXT, "glXGetProcAddress");
 
-//extern "C" void *glXGetProcAddressARB (const GLubyte * str) {
-//    return dlsym(RTLD_DEFAULT, (char *) str);
-//}
+    if(strcmp((const char*)str, "glXSwapBuffers")==0)return (void*)glXSwapBuffers;
+    return _glXGetProcAddress(str);
+}
+
+extern "C" void *glXGetProcAddressARB (const GLubyte * str) {
+    return glXGetProcAddress(str);
+}
 
 extern "C" void *dlsym(void *handle, const char *name)
 {
-//    if(strcmp(name, "glXGetProcAddressARB") == 0){
-//        return (void *)glXGetProcAddressARB;
-//    }
+    if(strcmp(name, "glXGetProcAddressARB") == 0){
+        return (void *)glXGetProcAddressARB;
+    }
 
-//    if(strcmp(name, "glXGetProcAddress") == 0){
-//        return (void *)glXGetProcAddress;
-//    }
+    if(strcmp(name, "glXGetProcAddress") == 0){
+        return (void *)glXGetProcAddress;
+    }
 
     if(!o_dlsym){
         o_dlsym = (void*(*)(void *handle, const char *name)) dlvsym(RTLD_NEXT,"dlsym", "GLIBC_2.0");
