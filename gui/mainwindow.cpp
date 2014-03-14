@@ -95,6 +95,7 @@ MainWindow::MainWindow(QWidget *parent) :
 {
     ui->setupUi(this);
     timer = new QTimer(this);
+    timer->setTimerType(Qt::PreciseTimer);
     mem = new SharedMemory("/kiroku-frame", SharedMemory::Slave);
     if(mem->error()!=0)
     {

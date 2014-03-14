@@ -151,16 +151,21 @@ void Recorder::setupPipeline()
     GstElement *sink = gst_element_factory_make("filesink", NULL);
     GstElement *xvsink = gst_element_factory_make("xvimagesink", NULL);
     GstElement *videoTee = gst_element_factory_make("tee", NULL);
-    GstElement *queue[3];
-    for(int i=0;i<3;i++)
+    GstElement *filter = gst_element_factory_make("capsfilter", NULL);
+    GstElement *queue[4];
+    for(int i=0;i<4;i++)
     {
         queue[i] = gst_element_factory_make("queue", NULL);
         pipeline->addToPipeline(queue[i]);
     }
 
+    GstCaps *caps = gst_caps_from_string("video/x-raw,format=I420");
+    g_object_set(filter, "caps", caps, NULL);
+    gst_caps_unref(caps);
+
     gst_video_overlay_set_window_handle(GST_VIDEO_OVERLAY(xvsink), winID);
 
-    pipeline->addToPipeline(videoEncoder, mux, sink, xvsink, videoTee);
+    pipeline->addToPipeline(videoEncoder, mux, sink, xvsink, videoTee, filter);
 
     if(settings.videoCodec=="x264enc")g_object_set(videoEncoder, "speed-preset", 1, "bitrate", 5000, NULL);
     else if(settings.videoCodec=="theoraenc")g_object_set(videoEncoder, "speed-level", 3, NULL);
@@ -169,11 +174,10 @@ void Recorder::setupPipeline()
     QByteArray path = QFile::encodeName(settings.outputFile);
     g_object_set(sink, "location", path.data(), NULL);
 
-    g_object_set(xvsink, "sync", FALSE, NULL);
+    g_object_set(xvsink, "sync", FALSE, "async", FALSE, NULL);
 
-    gst_element_link_many(videoTee, queue[0], videoEncoder, queue[1], mux, sink, NULL);
+    gst_element_link_many(videoTee, filter, queue[0], videoEncoder, queue[1], mux, sink, NULL);
     gst_element_link_many(videoTee, queue[2], xvsink, NULL);
-
 
     GstPad *srcpad, *sinkpad;
 
@@ -196,7 +200,7 @@ void Recorder::setupPipeline()
     {
         GstElement *audioEncoder = gst_element_factory_make(settings.audioCodec.constData(), NULL);
         pipeline->addToPipeline(audioEncoder);
-        gst_element_link(audioEncoder, mux);
+        gst_element_link_many(audioEncoder, queue[3], mux, NULL);
         sinkpad = gst_element_get_static_pad(audioEncoder, "sink");
     }
     srcpad = audioBin->getSrcPad();

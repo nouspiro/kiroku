@@ -50,30 +50,31 @@ extern "C" void *glXGetProcAddressARB (const GLubyte * str) {
 
 extern "C" void *dlsym(void *handle, const char *name)
 {
-    if(strcmp(name, "glXGetProcAddressARB") == 0){
-        return (void *)glXGetProcAddressARB;
-    }
+    //cout << name << endl;
 
-    if(strcmp(name, "glXGetProcAddress") == 0){
-        return (void *)glXGetProcAddress;
-    }
+    if(strcmp(name, "glXGetProcAddressARB") == 0)
+        return (void*)glXGetProcAddressARB;
 
-    if(!o_dlsym){
+    if(strcmp(name, "glXGetProcAddress") == 0)
+        return (void*)glXGetProcAddress;
+
+    if(strcmp(name, "glXSwapBuffers")==0)
+        return (void*)glXSwapBuffers;
+
+    if(!o_dlsym)
+    {
         o_dlsym = (void*(*)(void *handle, const char *name)) dlvsym(RTLD_NEXT,"dlsym", "GLIBC_2.0");
 
-        if(!o_dlsym){
-            o_dlsym = (void*(*)(void *handle, const char *name)) dlvsym(RTLD_NEXT,"dlsym", "GLIBC_2.10");
-        }
         if(!o_dlsym)
-        {
-            o_dlsym = (void*(*)(void *handle, const char *name)) dlvsym(RTLD_NEXT,"dlsym", "GLIBC_2.2.5");
-        }
+            o_dlsym = (void*(*)(void *handle, const char *name)) dlvsym(RTLD_NEXT,"dlsym", "GLIBC_2.10");
 
-        if(!o_dlsym){
+        if(!o_dlsym)
+            o_dlsym = (void*(*)(void *handle, const char *name)) dlvsym(RTLD_NEXT,"dlsym", "GLIBC_2.2.5");
+
+        if(!o_dlsym)
             cout << "FAILED TO FIND DLSYM()" << endl;
-        }else{
+        else
             cout << "found dlsym" << endl;
-        }
     }
 
     return (*o_dlsym)( handle,name );
@@ -87,7 +88,7 @@ void glXSwapBuffers(Display *dpy, GLXDrawable drawable)
 
     if(_glXSwapBuffers==0)
     {
-        _glXSwapBuffers = (PFNGLXSWAPBUFFERSPROC)dlsym(RTLD_NEXT, "glXSwapBuffers");
+        _glXSwapBuffers = (PFNGLXSWAPBUFFERSPROC)o_dlsym(RTLD_NEXT, "glXSwapBuffers");
         cout << "INIT KIROKU" << endl;
     }
 
