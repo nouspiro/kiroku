@@ -94,6 +94,8 @@ void glXSwapBuffers(Display *dpy, GLXDrawable drawable)
 
     GLint viewport[4];
     glGetIntegerv(GL_VIEWPORT, viewport);
+    viewport[2] &= 0xfffffffe;
+    viewport[3] &= 0xfffffffe;
     if(viewport[2]!=size[0] || viewport[3]!=size[1])
     {
         memory.resize(viewport[2]*viewport[3]*4+sizeof(int)*2);
