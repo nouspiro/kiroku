@@ -24,6 +24,7 @@
 #include <QWidget>
 #include <QObject>
 #include <QPair>
+#include <gst/gst.h>
 #include "recorderpipeline.h"
 #include "recorderbin.h"
 #include "videocompositor.h"
@@ -51,6 +52,10 @@ class Recorder : public QObject
     AudioBin *audioBin;
     CameraBin *cameraBin;
     VideoCompositor *compositor;
+    GstElement *videoTee, *audioTee;
+    GstElement *xvQueue, *xvsink;
+    GstPad *teePad;
+    bool xvLinked;
     WId winID;
 public:
     explicit Recorder(QObject *parent = 0);
@@ -63,6 +68,9 @@ public:
 
     static StringPairList getElementsForCaps(GstElementFactoryListType type, QList<GstCaps *> capsList);
     static StringPairList codecsForFormat(GstElementFactoryListType type, const QString &format);
+
+    void togglePreview();
+    GstPadProbeReturn unlinkXvsink();
 protected:
     void setupPipeline();
 };

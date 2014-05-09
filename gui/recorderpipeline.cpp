@@ -61,9 +61,9 @@ void RecorderPipeline::addToPipeline(GstElement *element)
     gst_bin_add(GST_BIN(pipeline), element);
 }
 
-GstElement *RecorderPipeline::getPipeline()
+void RecorderPipeline::removeFromPipeline(GstElement *element)
 {
-    return pipeline;
+    gst_bin_remove(GST_BIN(pipeline), element);
 }
 
 void RecorderPipeline::start()
@@ -73,6 +73,11 @@ void RecorderPipeline::start()
 
 void RecorderPipeline::stop()
 {
+}
+
+void RecorderPipeline::dumpDot()
+{
+    GST_DEBUG_BIN_TO_DOT_FILE(GST_BIN(pipeline), GST_DEBUG_GRAPH_SHOW_ALL, "recorder");
 }
 
 void RecorderPipeline::onMessage(GstMessage *msg)

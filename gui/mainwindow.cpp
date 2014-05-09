@@ -162,6 +162,11 @@ void MainWindow::stopRecording()
     timer->stop();
 }
 
+void MainWindow::togglePreview()
+{
+    recorder->togglePreview();
+}
+
 void MainWindow::grabFrame()
 {
     uchar *data = (uchar*)mem->lock();

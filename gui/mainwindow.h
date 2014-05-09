@@ -49,6 +49,7 @@ public slots:
     void startRecording();
     void startEncoding();
     void stopRecording();
+    void togglePreview();
     void grabFrame();
 };
 

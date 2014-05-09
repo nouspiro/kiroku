@@ -71,6 +71,16 @@
      </layout>
     </item>
     <item>
+     <widget class="QPushButton" name="previewButton">
+      <property name="text">
+       <string>Toggle preview</string>
+      </property>
+      <property name="checkable">
+       <bool>false</bool>
+      </property>
+     </widget>
+    </item>
+    <item>
      <widget class="QPushButton" name="startButton">
       <property name="text">
        <string>Start recording</string>
@@ -138,10 +148,27 @@
     </hint>
    </hints>
   </connection>
+  <connection>
+   <sender>previewButton</sender>
+   <signal>clicked()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>togglePreview()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>199</x>
+     <y>311</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>199</x>
+     <y>194</y>
+    </hint>
+   </hints>
+  </connection>
  </connections>
  <slots>
   <slot>startRecording()</slot>
   <slot>stopRecording()</slot>
   <slot>browseDir()</slot>
+  <slot>togglePreview()</slot>
  </slots>
 </ui>

@@ -40,9 +40,10 @@ public:
         addToPipeline(element);
         addToPipeline(rest...);
     }
-    GstElement *getPipeline();
+    void removeFromPipeline(GstElement *element);
     void start();
     void stop();
+    void dumpDot();
 signals:
 
 public slots:
