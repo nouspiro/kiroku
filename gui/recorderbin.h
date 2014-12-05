@@ -33,24 +33,23 @@ class SourceBin : public QObject
 protected:
     GstElement *bin;
     void setupSrcPad(GstElement *element, const char *name);
+    void setupRunningSrcPad(GstElement *element, const char *name);
 public:
     explicit SourceBin(RecorderPipeline *pipeline = 0);
     virtual ~SourceBin();
     GstPad* getSrcPad();
-    virtual void sendEos() = 0;
 };
 
 class VideoBin : public SourceBin
 {
     int width, height;
     GstVideoInfo info;
-    GstElement *appsrc, *videorate, *flip, *videoconvert;
+    GstElement *appsrc, *queue, *videorate, *flip, *videoconvert;
     bool enough;
 public:
     explicit VideoBin(int w, int h, RecorderPipeline *pipeline = 0);
     ~VideoBin();
     void pushFrame(const void *data);
-    void sendEos();
     void needData(guint lenght);
     void enoughData();
 };
@@ -61,7 +60,6 @@ class AudioBin : public SourceBin
 public:
     explicit AudioBin(const QByteArray &device, RecorderPipeline *pipeline = 0);
     ~AudioBin();
-    void sendEos();
 };
 
 class CameraBin : public SourceBin
@@ -70,8 +68,24 @@ class CameraBin : public SourceBin
 public:
     explicit CameraBin(RecorderPipeline *pipeline = 0);
     ~CameraBin();
-    void sendEos();
     void setDevice(const char *device);
+};
+
+class FileBin : public SourceBin
+{
+    Q_OBJECT
+    GstElement *src, *decodebin, *videoconvert, *imgfreeze;
+public:
+    explicit FileBin(const QString &path, RecorderPipeline *pipeline = 0);
+    void sendEos();
+    void padAdded(GstPad *pad);
+};
+
+class XImageBin : public SourceBin
+{
+    GstElement *src, *videoconvert;
+public:
+    XImageBin(RecorderPipeline *pipeline = 0);
 };
 
 #endif // SOURCEBIN_H

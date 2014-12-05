@@ -51,6 +51,7 @@ class Recorder : public QObject
     VideoBin *videoBin;
     AudioBin *audioBin;
     CameraBin *cameraBin;
+    FileBin *fileBin;
     VideoCompositor *compositor;
     GstElement *videoTee, *audioTee;
     GstElement *xvQueue, *xvsink;
@@ -73,6 +74,8 @@ public:
     GstPadProbeReturn unlinkXvsink();
 protected:
     void setupPipeline();
+protected slots:
+    void fileSrcPadAdded();
 };
 
 #endif // RECORDER_H

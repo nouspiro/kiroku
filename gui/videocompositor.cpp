@@ -10,6 +10,8 @@ VideoCompositor::VideoCompositor(RecorderPipeline *pipeline) :
     videomixer = gst_element_factory_make("videomixer", NULL);
     gst_bin_add(GST_BIN(bin), videomixer);
 
+    g_object_set(videomixer, "background", 1, NULL);
+
     GstPad *pad = gst_element_get_static_pad(videomixer, "src");
     gst_element_add_pad(bin, gst_ghost_pad_new("src", pad));
     gst_object_unref(pad);
@@ -49,7 +51,12 @@ void VideoCompositor::addSource(GstPad *srcPad, QRect rect)
     {
         gst_element_link_many(queue, filter, videomixer, NULL);
     }
-    gst_element_add_pad(bin, gst_ghost_pad_new(padName.constData(), targetPad));
+
+    GstState state;
+    gst_element_get_state(bin, &state, NULL, GST_SECOND);
+    GstPad *ghost = gst_ghost_pad_new(padName.constData(), targetPad);
+    if(state==GST_STATE_PLAYING)gst_pad_set_active(ghost, TRUE);
+    gst_element_add_pad(bin, ghost);
     sinkPad = gst_element_get_static_pad(bin, padName.constData());
     gst_pad_link(srcPad, sinkPad);
     gst_object_unref(sinkPad);

@@ -80,6 +80,11 @@ void RecorderPipeline::dumpDot()
     GST_DEBUG_BIN_TO_DOT_FILE(GST_BIN(pipeline), GST_DEBUG_GRAPH_SHOW_ALL, "recorder");
 }
 
+void RecorderPipeline::sendEos()
+{
+    gst_element_send_event(pipeline, gst_event_new_eos());
+}
+
 void RecorderPipeline::onMessage(GstMessage *msg)
 {
     switch(GST_MESSAGE_TYPE(msg))

@@ -21,6 +21,7 @@
 #include "recorderbin.h"
 #include <gst/app/gstappsrc.h>
 #include <gst/video/video-info.h>
+#include <QFile>
 #include <QDebug>
 
 extern "C"
@@ -36,12 +37,27 @@ void enoughDataCallback(GstAppSrc *src, gpointer user_data)
     Q_UNUSED(src);
     static_cast<VideoBin*>(user_data)->enoughData();
 }
+
+void fileBinPadAdded(GstElement *element, GstPad *pad, gpointer user_data)
+{
+    Q_UNUSED(element);
+    static_cast<FileBin*>(user_data)->padAdded(pad);
+}
 }
 
 void SourceBin::setupSrcPad(GstElement *element, const char *name)
 {
     GstPad *pad = gst_element_get_static_pad(element, name);
     gst_element_add_pad(bin, gst_ghost_pad_new("src", pad));
+    gst_object_unref(pad);
+}
+
+void SourceBin::setupRunningSrcPad(GstElement *element, const char *name)
+{
+    GstPad *pad = gst_element_get_static_pad(element, name);
+    GstPad *ghost = gst_ghost_pad_new("src", pad);
+    gst_pad_set_active(ghost, TRUE);
+    gst_element_add_pad(bin, ghost);
     gst_object_unref(pad);
 }
 
@@ -115,11 +131,6 @@ void VideoBin::pushFrame(const void *data)
     gst_app_src_push_buffer(GST_APP_SRC(appsrc), buffer);
 }
 
-void VideoBin::sendEos()
-{
-    gst_element_send_event(appsrc, gst_event_new_eos());
-}
-
 void VideoBin::needData(guint lenght)
 {
     Q_UNUSED(lenght);
@@ -152,12 +163,6 @@ AudioBin::~AudioBin()
 {
 }
 
-void AudioBin::sendEos()
-{
-    gst_element_send_event(src, gst_event_new_eos());
-}
-
-
 CameraBin::CameraBin(RecorderPipeline *pipeline) : SourceBin(pipeline)
 {
     src = gst_element_factory_make("v4l2src", NULL);
@@ -172,12 +177,51 @@ CameraBin::~CameraBin()
 {
 }
 
-void CameraBin::sendEos()
-{
-    gst_element_send_event(src, gst_event_new_eos());
-}
-
 void CameraBin::setDevice(const char *device)
 {
     g_object_set(src, "device", device, NULL);
+}
+
+FileBin::FileBin(const QString &path, RecorderPipeline *pipeline) : SourceBin(pipeline)
+{
+    src = gst_element_factory_make("filesrc", NULL);
+    decodebin = gst_element_factory_make("decodebin", NULL);
+    videoconvert = gst_element_factory_make("videoconvert", NULL);
+    imgfreeze = gst_element_factory_make("imagefreeze", NULL);
+
+    gst_bin_add_many(GST_BIN(bin), src, decodebin, videoconvert, imgfreeze, NULL);
+    gst_element_link_many(src, decodebin, NULL);
+    gst_element_link(videoconvert, imgfreeze);
+
+    QByteArray file = QFile::encodeName(path);
+    g_object_set(src, "location", file.constData(), NULL);
+
+    g_signal_connect(decodebin, "pad-added", G_CALLBACK(fileBinPadAdded), this);
+    setupSrcPad(imgfreeze, "src");
+}
+
+void FileBin::padAdded(GstPad *pad)
+{
+    GstCaps *caps = gst_pad_get_current_caps(pad);
+    gchar *str = gst_caps_to_string(caps);
+    qDebug() << str;
+    gst_caps_unref(caps);
+    g_free(str);
+
+    GstPad *sink = gst_element_get_static_pad(videoconvert, "sink");
+    gst_pad_link(pad, sink);
+    gst_object_unref(sink);
+
+    g_signal_handlers_disconnect_by_data(decodebin, this);
+}
+
+XImageBin::XImageBin(RecorderPipeline *pipeline) : SourceBin(pipeline)
+{
+    src = gst_element_factory_make("ximagesrc", NULL);
+    videoconvert = gst_element_factory_make("videoconvert", NULL);
+
+    gst_bin_add_many(GST_BIN(bin), src, videoconvert, NULL);
+    gst_element_link(src, videoconvert);
+
+    setupSrcPad(videoconvert, "src");
 }

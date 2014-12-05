@@ -25,7 +25,7 @@
 #include <QDebug>
 #include <QFile>
 
-extern "C" GstPadProbeReturn padProbeCallback(GstPad *pad, GstPadProbeInfo *info, gpointer user_data)
+extern "C" GstPadProbeReturn padProbeCallback(GstPad *, GstPadProbeInfo *, gpointer user_data)
 {
     return static_cast<Recorder*>(user_data)->unlinkXvsink();
 }
@@ -65,9 +65,7 @@ void Recorder::startRecording()
 
 void Recorder::stopRecording()
 {
-    if(videoBin)videoBin->sendEos();
-    if(audioBin)audioBin->sendEos();
-    if(cameraBin)cameraBin->sendEos();
+    pipeline->sendEos();
 }
 
 void Recorder::pushFrame(const void *data)
@@ -150,7 +148,7 @@ void Recorder::togglePreview()
         {
             xvQueue = gst_element_factory_make("queue", NULL);
             xvsink = gst_element_factory_make("xvimagesink", NULL);
-            g_object_set(xvsink, "sync", FALSE, "async", FALSE, NULL);
+            g_object_set(xvsink, "sync", FALSE, "async", TRUE, NULL);
             gst_video_overlay_set_window_handle(GST_VIDEO_OVERLAY(xvsink), winID);
             pipeline->addToPipeline(static_cast<GstElement*>(gst_object_ref(xvQueue)), static_cast<GstElement*>(gst_object_ref(xvsink)));
 
@@ -198,8 +196,9 @@ void Recorder::setupPipeline()
     pipeline = new RecorderPipeline(this);
     videoBin = new VideoBin(settings.width, settings.heigh, pipeline);
     audioBin = new AudioBin(settings.audioSource, pipeline);
-    //compositor = new VideoCompositor(pipeline);
-    //cameraBin = new CameraBin(pipeline);
+    compositor = new VideoCompositor(pipeline);
+    cameraBin = new CameraBin(pipeline);
+    fileBin = new FileBin("/home/nou/Obrázky/nagato.png", pipeline);
 
     GstElement *videoEncoder = gst_element_factory_make(settings.videoCodec.constData(), NULL);
     GstElement *mux = gst_element_factory_make("matroskamux", NULL);
@@ -219,7 +218,7 @@ void Recorder::setupPipeline()
 
     pipeline->addToPipeline(videoEncoder, mux, sink, videoTee, filter);
 
-    if(settings.videoCodec=="x264enc")g_object_set(videoEncoder, "speed-preset", 1, "bitrate", 5000, NULL);
+    if(settings.videoCodec=="x264enc")g_object_set(videoEncoder, "speed-preset", 0, "bitrate", 5000, NULL);
     else if(settings.videoCodec=="theoraenc")g_object_set(videoEncoder, "speed-level", 3, NULL);
     else g_object_set(videoEncoder, "bitrate", 50000000, NULL);
 
@@ -230,12 +229,14 @@ void Recorder::setupPipeline()
 
     GstPad *srcpad, *sinkpad;
 
-    //compositor->addSource(srcpad);
-    //srcpad = cameraBin->getSrcPad();
-    //compositor->addSource(srcpad, QRect(0, 0, 640, 480));
-    //srcpad = compositor->getSrcPad();
-
     srcpad = videoBin->getSrcPad();
+    compositor->addSource(srcpad);
+    srcpad = cameraBin->getSrcPad();
+    compositor->addSource(srcpad, QRect(960, 480, 320, 240));
+    srcpad = fileBin->getSrcPad();
+    compositor->addSource(srcpad);
+
+    srcpad = compositor->getSrcPad();
     sinkpad = gst_element_get_static_pad(videoTee, "sink");
     gst_pad_link(srcpad, sinkpad);
     gst_object_unref(srcpad);
@@ -256,4 +257,10 @@ void Recorder::setupPipeline()
     gst_pad_link(srcpad, sinkpad);
     gst_object_unref(srcpad);
     gst_object_unref(sinkpad);
+}
+
+void Recorder::fileSrcPadAdded()
+{
+    GstPad *srcpad = fileBin->getSrcPad();
+    compositor->addSource(srcpad);
 }

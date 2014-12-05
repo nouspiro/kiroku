@@ -44,6 +44,7 @@ public:
     void start();
     void stop();
     void dumpDot();
+    void sendEos();
 signals:
 
 public slots:
