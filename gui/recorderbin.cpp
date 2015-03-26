@@ -83,11 +83,10 @@ VideoBin::VideoBin(int w, int h, RecorderPipeline *pipeline) : SourceBin(pipelin
 {
     appsrc = gst_element_factory_make("appsrc", NULL);
     videorate = gst_element_factory_make("videorate", NULL);
-    flip = gst_element_factory_make("videoflip", NULL);
+    //flip = gst_element_factory_make("videoflip", NULL);
     videoconvert = gst_element_factory_make("videoconvert", NULL);
 
-    GstVideoFormat format = gst_video_format_from_masks(24, 32, G_BIG_ENDIAN, 255<<8, 255<<16, 255<<24, 0);
-    gst_video_info_set_format(&info, format, width, height);
+    gst_video_info_set_format(&info, GST_VIDEO_FORMAT_Y444, width, height);
     info.fps_n = 25;
     info.fps_d = 1;
     info.par_n = info.par_d = 1;
@@ -111,10 +110,10 @@ VideoBin::VideoBin(int w, int h, RecorderPipeline *pipeline) : SourceBin(pipelin
                  "max-bytes", (guint64)info.size*30, NULL);
 
 
-    g_object_set(flip, "method", 5, NULL);
+    //g_object_set(flip, "method", 5, NULL);
 
-    gst_bin_add_many(GST_BIN(bin), appsrc, videorate, flip, videoconvert, NULL);
-    gst_element_link_many(appsrc, videorate, flip, videoconvert, NULL);
+    gst_bin_add_many(GST_BIN(bin), appsrc, videorate, /*flip,*/ videoconvert, NULL);
+    gst_element_link_many(appsrc, videorate, /*flip,*/ videoconvert, NULL);
     setupSrcPad(videoconvert, "src");
 }
 

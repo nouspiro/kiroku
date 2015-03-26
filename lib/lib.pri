@@ -16,7 +16,8 @@ SOURCES += ../lib/intercept.cpp \
     ../lib/sharedmemory.cpp
 
 HEADERS += ../lib/intercept.h \
-    ../lib/sharedmemory.h
+    ../lib/sharedmemory.h \
+    ../lib/shaders.h
 
 LIBS += -lrt -dl
 

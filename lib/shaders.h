@@ -18,19 +18,33 @@
 *
 ****************************************************************************/
 
-#ifndef INTERCEPT_H
-#define INTERCEPT_H
+#ifndef SHADERS_H
+#define SHADERS_H
 
-#include <X11/Xlib.h>
-#include <GL/gl.h>
+const char *rgb2yuv_source_vertex =
+        "#version 130\n"
+        "in vec4 vertex;\n"
+        "out vec2 texCoord;\n"
+        "void main(){\n"
+        "gl_Position = gl_Vertex;\n"
+        "texCoord = gl_Vertex.xy*0.5+0.5;\n"
+        "texCoord.y = 1.0-texCoord.y;\n"
+        "}";
 
-typedef XID GLXDrawable;
+const char *rgb2yuv_source_frag =
+        "#version 130\n"
+        "uniform sampler2D tex;\n"
+        "uniform vec2 size;\n"
+        "uniform mat4 rgb2yuv;\n"
+        "in vec2 texCoord;\n"
+        "out float y;\n"
+        "out float u;\n"
+        "out float v;\n"
+        "void main(){\n"
+        "vec4 yuv = rgb2yuv*vec4(texture(tex, texCoord).rgb, 1.0);\n"
+        "y = yuv.x;\n"
+        "u = yuv.y;\n"
+        "v = yuv.z;\n"
+        "}";
 
-extern "C"
-{
-    void glXSwapBuffers(Display *dpy, GLXDrawable drawable);
-    void glBindFrameBuffer(GLenum target, GLuint framebuffer);
-    void glBindFrameBufferEXT(GLenum target, GLuint framebuffer);
-}
-
-#endif // INTERCEPT_H
+#endif // SHADERS_H
