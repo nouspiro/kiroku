@@ -96,6 +96,7 @@ void SharedMemory::resize(size_t _size)
         }
     }
     rptr = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+    if(rptr==MAP_FAILED)std::cerr << "Failed to map memory" << std::endl;
     if(mode==Master)SH_SIZE(rptr) = size;
 }
 
