@@ -121,6 +121,9 @@ extern "C" void *dlsym(void *handle, const char *name)
 
 void initGLProc()
 {
+    if(_glXGetProcAddress==0)
+        _glXGetProcAddress = (PFNGLXGETPROCADDRESSPROC)o_dlsym(RTLD_NEXT, "glXGetProcAddress");
+
     _glGenFramebuffers = (PFNGLGENFRAMEBUFFERSPROC)_glXGetProcAddress((const GLubyte*)"glGenFramebuffers");
     _glBindFrameBuffer = (PFNGLBINDFRAMEBUFFERPROC)_glXGetProcAddress((const GLubyte*)"glBindFramebuffer");
     _glFramebufferTexture2D = (PFNGLFRAMEBUFFERTEXTURE2DPROC)_glXGetProcAddress((const GLubyte*)"glFramebufferTexture2D");
@@ -238,27 +241,28 @@ extern "C" void glXSwapBuffers(Display *dpy, GLXDrawable drawable)
     glGetIntegerv(GL_VIEWPORT, viewport);
     viewport[2] &= 0xfffffffe;
     viewport[3] &= 0xfffffffe;
+    int stride = viewport[2]&4 ? (viewport[2]&0xfffffffc)+4 : viewport[2];
     if(viewport[2]!=size[0] || viewport[3]!=size[1])
     {
-        memory.resize(viewport[2]*viewport[3]*3+sizeof(int)*2);
         size[0] = viewport[2];
         size[1] = viewport[3];
+        memory.resize(stride*viewport[3]*3+sizeof(int)*2);
         cout << size[0] << "x" << size[1] << endl;
         initFBO(size[0], size[1]);
     }
 
     GLint depthTest, programOld, stencilTest, blend, activeTexture, textureBind;
-    GLint drawFbo, readFbo;
+    GLint packAlignment;
     glGetIntegerv(GL_DEPTH_TEST, &depthTest);
     glGetIntegerv(GL_STENCIL_TEST, &stencilTest);
     glGetIntegerv(GL_CURRENT_PROGRAM, &programOld);
     glGetIntegerv(GL_BLEND, &blend);
     glGetIntegerv(GL_ACTIVE_TEXTURE, &activeTexture);
-    glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &drawFbo);
-    glGetIntegerv(GL_READ_FRAMEBUFFER_BINDING, &readFbo);
+    glGetIntegerv(GL_PACK_ALIGNMENT, &packAlignment);
     if(depthTest)glDisable(GL_DEPTH_TEST);
     if(stencilTest)glDisable(GL_STENCIL_TEST);
     if(blend)glDisable(GL_BLEND);
+    glPixelStorei(GL_PACK_ALIGNMENT, 4);
 
     char *data = (char*)memory.lock();
     ((int*)data)[0] = size[0];
@@ -267,7 +271,7 @@ extern "C" void glXSwapBuffers(Display *dpy, GLXDrawable drawable)
     for(int i=0;i<3;i++)
     {
         glBindTexture(GL_TEXTURE_2D, yuvTex[i]);
-        glGetTexImage(GL_TEXTURE_2D, 0, GL_RED, GL_UNSIGNED_BYTE, data+(size[0]*size[1]*i)+sizeof(int)*2);
+        glGetTexImage(GL_TEXTURE_2D, 0, GL_RED, GL_UNSIGNED_BYTE, data+(stride*size[1]*i)+sizeof(int)*2);
     }
     memory.unlock();
 
@@ -299,6 +303,7 @@ extern "C" void glXSwapBuffers(Display *dpy, GLXDrawable drawable)
     if(depthTest)glEnable(GL_DEPTH_TEST);
     if(stencilTest)glEnable(GL_STENCIL_TEST);
     if(blend)glEnable(GL_BLEND);
+    glPixelStorei(GL_PACK_ALIGNMENT, packAlignment);
 
     _glXSwapBuffers(dpy, drawable);
     _glBindFrameBuffer(GL_DRAW_FRAMEBUFFER, fbo);
