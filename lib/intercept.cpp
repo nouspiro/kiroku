@@ -77,8 +77,6 @@ extern "C" void *glXGetProcAddress(const GLubyte * str)
 
 
     if(strcmp((const char*)str, "glXSwapBuffers")==0)return (void*)glXSwapBuffers;
-    if(strcmp((const char*)str, "glBindFramebuffer")==0)return (void*)glBindFrameBuffer;
-    if(strcmp((const char*)str, "glBindFramebufferEXT")==0)return (void*)glBindFrameBufferEXT;
     return _glXGetProcAddress(str);
 }
 
@@ -252,22 +250,35 @@ extern "C" void glXSwapBuffers(Display *dpy, GLXDrawable drawable)
     }
 
     GLint depthTest, programOld, stencilTest, blend, activeTexture, textureBind;
-    GLint packAlignment;
+    GLint packAlignment, drawFbo, readFbo, fboBind, pboBind;
     glGetIntegerv(GL_DEPTH_TEST, &depthTest);
     glGetIntegerv(GL_STENCIL_TEST, &stencilTest);
     glGetIntegerv(GL_CURRENT_PROGRAM, &programOld);
     glGetIntegerv(GL_BLEND, &blend);
     glGetIntegerv(GL_ACTIVE_TEXTURE, &activeTexture);
     glGetIntegerv(GL_PACK_ALIGNMENT, &packAlignment);
+    glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &drawFbo);
+    glGetIntegerv(GL_READ_FRAMEBUFFER_BINDING, &readFbo);
+    glGetIntegerv(GL_FRAMEBUFFER_BINDING, &fboBind);
+    glGetIntegerv(GL_TEXTURE_BINDING_2D, &textureBind);
+    glGetIntegerv(GL_PIXEL_PACK_BUFFER_BINDING, &pboBind);
     if(depthTest)glDisable(GL_DEPTH_TEST);
     if(stencilTest)glDisable(GL_STENCIL_TEST);
     if(blend)glDisable(GL_BLEND);
+    glPixelStorei(GL_PACK_SWAP_BYTES, 0);
+    glPixelStorei(GL_PACK_ROW_LENGTH, 0);
+    glPixelStorei(GL_PACK_IMAGE_HEIGHT, 0);
+    glPixelStorei(GL_PACK_SKIP_ROWS, 0);
+    glPixelStorei(GL_PACK_SKIP_PIXELS, 0);
+    glPixelStorei(GL_PACK_SKIP_IMAGES, 0);
     glPixelStorei(GL_PACK_ALIGNMENT, 4);
+    _glBindBuffer(GL_PIXEL_PACK_BUFFER, 0);
 
     char *data = (char*)memory.lock();
     ((int*)data)[0] = size[0];
     ((int*)data)[1] = size[1];
 
+    glActiveTexture(GL_TEXTURE0);
     for(int i=0;i<3;i++)
     {
         glBindTexture(GL_TEXTURE_2D, yuvTex[i]);
@@ -275,14 +286,18 @@ extern "C" void glXSwapBuffers(Display *dpy, GLXDrawable drawable)
     }
     memory.unlock();
 
-    glActiveTexture(GL_TEXTURE0);
-    glGetIntegerv(GL_TEXTURE_BINDING_2D, &textureBind);
-    glBindTexture(GL_TEXTURE_2D, fboTex[0]);
+    glReadBuffer(GL_BACK);
+    _glBindFrameBuffer(GL_READ_FRAMEBUFFER, 0);
+    _glBindFrameBuffer(GL_DRAW_FRAMEBUFFER, fbo);
+    _glBlitFramebuffer(0, 0, size[0], size[1], 0, 0, size[0], size[1], GL_COLOR_BUFFER_BIT, GL_NEAREST);
+    _glBindFrameBuffer(GL_DRAW_FRAMEBUFFER, yuvFbo);
+
     _glUseProgram(program);
     _glUniformMatrix4fv(rgb2yuvLocation, 1, GL_TRUE, rgb2yuv_mat);
     _glUniform1i(texLocation, 0);
-    _glBindFrameBuffer(GL_DRAW_FRAMEBUFFER, yuvFbo);
+    glBindTexture(GL_TEXTURE_2D, fboTex[0]);
 
+    glClear(GL_COLOR_BUFFER_BIT);
     glBegin(GL_QUADS);
     glVertex3f(-1, -1, 0);
     glVertex3f( 1, -1, 0);
@@ -294,9 +309,6 @@ extern "C" void glXSwapBuffers(Display *dpy, GLXDrawable drawable)
     glBindTexture(GL_TEXTURE_2D, textureBind);
     glActiveTexture(activeTexture);
 
-    _glBindFrameBuffer(GL_READ_FRAMEBUFFER, fbo);
-    _glBindFrameBuffer(GL_DRAW_FRAMEBUFFER, 0);
-    _glBlitFramebuffer(0, 0, size[0], size[1], 0, 0, size[0], size[1], GL_COLOR_BUFFER_BIT, GL_NEAREST);
     GLenum err = glGetError();
     if(err)cout << err << endl;
 
@@ -304,21 +316,9 @@ extern "C" void glXSwapBuffers(Display *dpy, GLXDrawable drawable)
     if(stencilTest)glEnable(GL_STENCIL_TEST);
     if(blend)glEnable(GL_BLEND);
     glPixelStorei(GL_PACK_ALIGNMENT, packAlignment);
+    _glBindFrameBuffer(GL_DRAW_FRAMEBUFFER, drawFbo);
+    _glBindFrameBuffer(GL_READ_FRAMEBUFFER, readFbo);
+    _glBindBuffer(GL_PIXEL_PACK_BUFFER, pboBind);
 
     _glXSwapBuffers(dpy, drawable);
-    _glBindFrameBuffer(GL_DRAW_FRAMEBUFFER, fbo);
-}
-
-extern "C" void glBindFrameBuffer(GLenum target, GLuint framebuffer)
-{
-    if(_glBindFrameBuffer==0)
-        _glBindFrameBuffer = (PFNGLBINDFRAMEBUFFERPROC)o_dlsym(RTLD_NEXT, "glBindFramebuffer");
-
-    if(framebuffer==0)framebuffer = fbo;
-    _glBindFrameBuffer(target, framebuffer);
-}
-
-extern "C" void glBindFrameBufferEXT(GLenum target, GLuint framebuffer)
-{
-    glBindFrameBuffer(target, framebuffer);
 }

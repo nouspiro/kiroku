@@ -29,8 +29,6 @@ typedef XID GLXDrawable;
 extern "C"
 {
     void glXSwapBuffers(Display *dpy, GLXDrawable drawable);
-    void glBindFrameBuffer(GLenum target, GLuint framebuffer);
-    void glBindFrameBufferEXT(GLenum target, GLuint framebuffer);
 }
 
 #endif // INTERCEPT_H
