@@ -239,7 +239,7 @@ extern "C" void glXSwapBuffers(Display *dpy, GLXDrawable drawable)
     glGetIntegerv(GL_VIEWPORT, viewport);
     viewport[2] &= 0xfffffffe;
     viewport[3] &= 0xfffffffe;
-    int stride = viewport[2]&4 ? (viewport[2]&0xfffffffc)+4 : viewport[2];
+    int stride = viewport[2]&3 ? (viewport[2]&0xfffffffc)+4 : viewport[2];
     if(viewport[2]!=size[0] || viewport[3]!=size[1])
     {
         size[0] = viewport[2];
