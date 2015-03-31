@@ -66,9 +66,10 @@ static GLuint yuvFbo, yuvTex[3];
 static GLuint program, fragmentShader, vertexShader;
 static GLint rgb2yuvLocation, texLocation;
 
-float rgb2yuv_mat[] = { 0.182586,  0.614231,  0.062007,  0.062745,
-                       -0.100644, -0.338572,  0.439216,  0.501961,
-                        0.439216, -0.398942, -0.040274,  0.501961};
+const float rgb2yuv_mat[] = { 0.182586,  0.614231,  0.062007,  0.062745,
+                             -0.100644, -0.338572,  0.439216,  0.501961,
+                              0.439216, -0.398942, -0.040274,  0.501961,
+                              0.000000,  0.000000,  0.000000,  1.000000};
 
 extern "C" void *glXGetProcAddress(const GLubyte * str)
 {
