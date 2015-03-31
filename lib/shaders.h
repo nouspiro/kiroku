@@ -23,11 +23,11 @@
 
 const char *rgb2yuv_source_vertex =
         "#version 130\n"
-        "in vec4 vertex;\n"
+        "uniform vec2 scale;"
         "out vec2 texCoord;\n"
         "void main(){\n"
         "gl_Position = gl_Vertex;\n"
-        "texCoord = gl_Vertex.xy*0.5+0.5;\n"
+        "texCoord = scale*gl_Vertex.xy*0.5+0.5;\n"
         "texCoord.y = 1.0-texCoord.y;\n"
         "}";
 

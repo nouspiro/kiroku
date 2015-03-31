@@ -21,10 +21,12 @@
 #define __USE_GNU
 #include "intercept.h"
 #include <iostream>
+#include <fstream>
 #include <string.h>
 #include <GL/gl.h>
 #include <stdlib.h>
 #include <dlfcn.h>
+#include <pwd.h>
 #include "sharedmemory.h"
 #include "shaders.h"
 
@@ -55,21 +57,24 @@ static PFNGLGETPROGRAMINFOLOGPROC _glGetProgramInfoLog = 0;
 static PFNGLGETSHADERINFOLOGPROC _glGetShaderInfoLog = 0;
 static PFNGLUNIFORMMATRIX4FVPROC _glUniformMatrix4fv = 0;
 static PFNGLUNIFORM1IPROC _glUniform1i = 0;
+static PFNGLUNIFORM2FPROC _glUniform2f = 0;
 static PFNGLGETUNIFORMLOCATIONPROC _glGetUniformLocation = 0;
 static PFNGLBINDATTRIBLOCATIONPROC _glBindAttribLocation = 0;
 static PFNGLBINDFRAGDATALOCATIONPROC _glBindFragDataLocation = 0;
 static PFNGLDRAWBUFFERSPROC _glDrawBuffers = 0;
 
-static GLuint fbo, fboTex[2];
+static GLuint fbo, fboTex;
 static GLuint pbo[2];
 static GLuint yuvFbo, yuvTex[3];
 static GLuint program, fragmentShader, vertexShader;
-static GLint rgb2yuvLocation, texLocation;
+static GLint rgb2yuvLocation, texLocation, videoScaleLocation;
 
 const float rgb2yuv_mat[] = { 0.182586,  0.614231,  0.062007,  0.062745,
                              -0.100644, -0.338572,  0.439216,  0.501961,
                               0.439216, -0.398942, -0.040274,  0.501961,
                               0.000000,  0.000000,  0.000000,  1.000000};
+
+const char *configPath = "/.config/nou/kiroku-intercept.conf";
 
 extern "C" void *glXGetProcAddress(const GLubyte * str)
 {
@@ -118,6 +123,24 @@ extern "C" void *dlsym(void *handle, const char *name)
     return (*o_dlsym)(handle, name);
 }
 
+void calculateScale(const GLint orig[2], const GLint capt[2], GLfloat videoScale[2])
+{
+    float aspectOrig = (float)orig[0]/orig[1];
+    float aspectCapt = (float)capt[0]/capt[1];
+
+    if(aspectOrig<aspectCapt)
+    {
+        videoScale[0] = aspectCapt/aspectOrig;
+        videoScale[1] = 1;
+    }
+    else
+    {
+        videoScale[0] = 1;
+        videoScale[1] = aspectOrig/aspectCapt;
+    }
+
+}
+
 void initGLProc()
 {
     if(_glXGetProcAddress==0)
@@ -142,12 +165,11 @@ void initGLProc()
     _glGetShaderInfoLog = (PFNGLGETSHADERINFOLOGPROC)_glXGetProcAddress((const GLubyte*)"glGetShaderInfoLog");
     _glUniformMatrix4fv = (PFNGLUNIFORMMATRIX4FVPROC)_glXGetProcAddress((const GLubyte*)"glUniformMatrix4fv");
     _glUniform1i = (PFNGLUNIFORM1IPROC)_glXGetProcAddress((const GLubyte*)"glUniform1i");
+    _glUniform2f = (PFNGLUNIFORM2FPROC)_glXGetProcAddress((const GLubyte*)"glUniform2f");
     _glGetUniformLocation = (PFNGLGETUNIFORMLOCATIONPROC)_glXGetProcAddress((const GLubyte*)"glGetUniformLocation");
     _glBindAttribLocation = (PFNGLBINDATTRIBLOCATIONPROC)_glXGetProcAddress((const GLubyte*)"glBindAttribLocation");
     _glBindFragDataLocation = (PFNGLBINDFRAGDATALOCATIONPROC)_glXGetProcAddress((const GLubyte*)"glBindFragDataLocation");
     _glDrawBuffers = (PFNGLDRAWBUFFERSPROC)_glXGetProcAddress((const GLubyte*)"glDrawBuffers");
-    //_gl = (PFNGLPROC)_glXGetProcAddress((const GLubyte*)"gl");
-    //_gl = (PFNGLPROC)_glXGetProcAddress((const GLubyte*)"gl");
 }
 
 void initYuvShader()
@@ -170,6 +192,7 @@ void initYuvShader()
 
     rgb2yuvLocation = _glGetUniformLocation(program, "rgb2yuv");
     texLocation = _glGetUniformLocation(program, "tex");
+    videoScaleLocation = _glGetUniformLocation(program, "scale");
 
     GLchar log[10000];
     GLsizei len;
@@ -187,17 +210,14 @@ void initFBO(int w, int h)
     glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &fboDrawBinding);
     glGetIntegerv(GL_TEXTURE_BINDING_2D, &texBinding);
 
-    glBindTexture(GL_TEXTURE_2D, fboTex[0]);
+    glBindTexture(GL_TEXTURE_2D, fboTex);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-
-    glBindTexture(GL_TEXTURE_2D, fboTex[1]);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_STENCIL, w, h, 0, GL_DEPTH_COMPONENT, GL_FLOAT, 0);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
 
     _glBindFrameBuffer(GL_DRAW_FRAMEBUFFER, fbo);
-    _glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, fboTex[0], 0);
-    _glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_TEXTURE_2D, fboTex[1], 0);
+    _glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, fboTex, 0);
 
     cout << "initFBO: " << _glCheckFramebufferStatus(GL_DRAW_FRAMEBUFFER) << " " << GL_FRAMEBUFFER_COMPLETE << endl;
 
@@ -212,42 +232,87 @@ void initFBO(int w, int h)
         _glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0+i, GL_TEXTURE_2D, yuvTex[i], 0);
     }
 
-    cout << "initFBO YUV: " << _glCheckFramebufferStatus(GL_DRAW_FRAMEBUFFER) << " " << GL_FRAMEBUFFER_COMPLETE << " " << fboTex[0] << endl;
+    cout << "initFBO YUV: " << _glCheckFramebufferStatus(GL_DRAW_FRAMEBUFFER) << " " << GL_FRAMEBUFFER_COMPLETE << endl;
 
     _glBindFrameBuffer(GL_DRAW_FRAMEBUFFER, fboDrawBinding);
     glBindTexture(GL_TEXTURE_2D, texBinding);
+}
+
+void loadConfig(GLint videoSize[2])
+{
+    string path;
+    const char *home = getenv("HOME");
+
+    if(home==NULL)home = getpwuid(getuid())->pw_dir;
+
+    if(home)
+    {
+        path = home;
+        path += configPath;
+        ifstream fr;
+        string key;
+        fr.open(path);
+        if(fr.is_open())
+        {
+            GLint w,h;
+            fr >> key;
+            if(key=="resolution")
+            {
+                fr >> w >> h;
+                if(fr.good())
+                {
+                    videoSize[0] = w;
+                    videoSize[1] = h;
+                }
+            }
+        }
+        else
+        {
+            //cerr << "Failed to open config" << endl;
+        }
+    }
+    else
+    {
+        cerr << "Failed to locate config." << endl;
+    }
 }
 
 extern "C" void glXSwapBuffers(Display *dpy, GLXDrawable drawable)
 {
     static PFNGLXSWAPBUFFERSPROC _glXSwapBuffers = 0;
     static GLint size[2] = {0, 0};
+    static GLint videoSize[2] = {640, 480};
+    const float unitSquare[] = {-1, -1,  1, -1,  1, 1,  -1, 1};
+    static GLfloat videoScale[2] = {1, 1};
     static SharedMemory memory("/kiroku-frame", SharedMemory::Master);
+
+    GLint viewport[4];
+    glGetIntegerv(GL_VIEWPORT, viewport);
 
     if(_glXSwapBuffers==0)
     {
         _glXSwapBuffers = (PFNGLXSWAPBUFFERSPROC)o_dlsym(RTLD_NEXT, "glXSwapBuffers");
         initGLProc();
         _glGenFramebuffers(1, &fbo);
-        glGenTextures(2, fboTex);
+        glGenTextures(1, &fboTex);
         _glGenFramebuffers(1, &yuvFbo);
         glGenTextures(3, yuvTex);
         cout << "INIT KIROKU " << glGetString(GL_VERSION) << endl;
         initYuvShader();
+        videoSize[0] = viewport[2];
+        videoSize[1] = viewport[3];
+        loadConfig(videoSize);
     }
 
-    GLint viewport[4];
-    glGetIntegerv(GL_VIEWPORT, viewport);
-    viewport[2] &= 0xfffffffe;
-    viewport[3] &= 0xfffffffe;
-    int stride = viewport[2]&3 ? (viewport[2]&0xfffffffc)+4 : viewport[2];
+    int stride = videoSize[0]&3 ? (videoSize[0]&0xfffffffc)+4 : videoSize[0];
     if(viewport[2]!=size[0] || viewport[3]!=size[1])
     {
         size[0] = viewport[2];
         size[1] = viewport[3];
-        memory.resize(stride*viewport[3]*3+sizeof(int)*2);
+        memory.resize(stride*videoSize[1]*3+sizeof(int)*2);
         cout << size[0] << "x" << size[1] << endl;
-        initFBO(size[0], size[1]);
+        initFBO(videoSize[0], videoSize[1]);
+        calculateScale(size, videoSize, videoScale);
     }
 
     GLint depthTest, programOld, stencilTest, blend, activeTexture, textureBind;
@@ -276,39 +341,42 @@ extern "C" void glXSwapBuffers(Display *dpy, GLXDrawable drawable)
     _glBindBuffer(GL_PIXEL_PACK_BUFFER, 0);
 
     char *data = (char*)memory.lock();
-    ((int*)data)[0] = size[0];
-    ((int*)data)[1] = size[1];
 
-    glActiveTexture(GL_TEXTURE0);
-    for(int i=0;i<3;i++)
+    if(data)
     {
-        glBindTexture(GL_TEXTURE_2D, yuvTex[i]);
-        glGetTexImage(GL_TEXTURE_2D, 0, GL_RED, GL_UNSIGNED_BYTE, data+(stride*size[1]*i)+sizeof(int)*2);
+        ((int*)data)[0] = videoSize[0];
+        ((int*)data)[1] = videoSize[1];
+
+        glActiveTexture(GL_TEXTURE0);
+        for(int i=0;i<3;i++)
+        {
+            glBindTexture(GL_TEXTURE_2D, yuvTex[i]);
+            glGetTexImage(GL_TEXTURE_2D, 0, GL_RED, GL_UNSIGNED_BYTE, data+(stride*videoSize[1]*i)+sizeof(int)*2);
+        }
+        memory.unlock();
+
+        glReadBuffer(GL_BACK);
+        _glBindFrameBuffer(GL_READ_FRAMEBUFFER, 0);
+        _glBindFrameBuffer(GL_DRAW_FRAMEBUFFER, fbo);
+        glViewport(0, 0, videoSize[0], videoSize[1]);
+        _glBlitFramebuffer(0, 0, size[0], size[1], 0, 0, videoSize[0], videoSize[1], GL_COLOR_BUFFER_BIT, GL_LINEAR);
+        _glBindFrameBuffer(GL_DRAW_FRAMEBUFFER, yuvFbo);
+
+        _glUseProgram(program);
+        _glUniformMatrix4fv(rgb2yuvLocation, 1, GL_TRUE, rgb2yuv_mat);
+        _glUniform1i(texLocation, 0);
+        _glUniform2f(videoScaleLocation, videoScale[0], videoScale[1]);
+        glBindTexture(GL_TEXTURE_2D, fboTex);
+
+        glBegin(GL_QUADS);
+        for(int i=0;i<4;i++)
+            glVertex3f(unitSquare[i*2], unitSquare[i*2+1], 0);
+        glEnd();
+
+        _glUseProgram(programOld);
+        glBindTexture(GL_TEXTURE_2D, textureBind);
+        glActiveTexture(activeTexture);
     }
-    memory.unlock();
-
-    glReadBuffer(GL_BACK);
-    _glBindFrameBuffer(GL_READ_FRAMEBUFFER, 0);
-    _glBindFrameBuffer(GL_DRAW_FRAMEBUFFER, fbo);
-    _glBlitFramebuffer(0, 0, size[0], size[1], 0, 0, size[0], size[1], GL_COLOR_BUFFER_BIT, GL_NEAREST);
-    _glBindFrameBuffer(GL_DRAW_FRAMEBUFFER, yuvFbo);
-
-    _glUseProgram(program);
-    _glUniformMatrix4fv(rgb2yuvLocation, 1, GL_TRUE, rgb2yuv_mat);
-    _glUniform1i(texLocation, 0);
-    glBindTexture(GL_TEXTURE_2D, fboTex[0]);
-
-    glClear(GL_COLOR_BUFFER_BIT);
-    glBegin(GL_QUADS);
-    glVertex3f(-1, -1, 0);
-    glVertex3f( 1, -1, 0);
-    glVertex3f( 1,  1, 0);
-    glVertex3f(-1,  1, 0);
-    glEnd();
-
-    _glUseProgram(programOld);
-    glBindTexture(GL_TEXTURE_2D, textureBind);
-    glActiveTexture(activeTexture);
 
     GLenum err = glGetError();
     if(err)cout << err << endl;
@@ -320,6 +388,7 @@ extern "C" void glXSwapBuffers(Display *dpy, GLXDrawable drawable)
     _glBindFrameBuffer(GL_DRAW_FRAMEBUFFER, drawFbo);
     _glBindFrameBuffer(GL_READ_FRAMEBUFFER, readFbo);
     _glBindBuffer(GL_PIXEL_PACK_BUFFER, pboBind);
+    glViewport(viewport[0], viewport[1], viewport[2], viewport[3]);
 
     _glXSwapBuffers(dpy, drawable);
 }
