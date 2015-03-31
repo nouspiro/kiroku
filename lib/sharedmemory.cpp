@@ -92,7 +92,7 @@ void SharedMemory::resize(size_t _size)
     {
         if(ftruncate(fd, size))
         {
-            std::cerr << "Can'ŧ resize memory" << std::endl;
+            std::cerr << "Can't resize memory" << std::endl;
         }
     }
     rptr = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
@@ -102,6 +102,7 @@ void SharedMemory::resize(size_t _size)
 
 void *SharedMemory::lock()
 {
+    if(rptr==MAP_FAILED)return 0;
     int c;
     c = cmpxchg(&SH_MUTEX(rptr), 0, 1);
     if(!c)return (char*)rptr+sizeof(SegmentHeader);
