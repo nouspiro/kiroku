@@ -169,7 +169,7 @@ void MainWindow::togglePreview()
 
 void MainWindow::grabFrame()
 {
-    uchar *data = (uchar*)mem->lock();
-    recorder->pushFrame(data+sizeof(int)*2);
+    void *data = mem->lock();
+    recorder->pushFrame(data);
     mem->unlock();
 }

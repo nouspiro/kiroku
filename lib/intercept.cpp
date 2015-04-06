@@ -29,6 +29,7 @@
 #include <pwd.h>
 #include "sharedmemory.h"
 #include "shaders.h"
+#include "videoframe.h"
 
 using namespace std;
 
@@ -64,7 +65,6 @@ static PFNGLBINDFRAGDATALOCATIONPROC _glBindFragDataLocation = 0;
 static PFNGLDRAWBUFFERSPROC _glDrawBuffers = 0;
 
 static GLuint fbo, fboTex;
-static GLuint pbo[2];
 static GLuint yuvFbo, yuvTex[3];
 static GLuint program, fragmentShader, vertexShader;
 static GLint rgb2yuvLocation, texLocation, videoScaleLocation;
@@ -285,6 +285,8 @@ extern "C" void glXSwapBuffers(Display *dpy, GLXDrawable drawable)
     const float unitSquare[] = {-1, -1,  1, -1,  1, 1,  -1, 1};
     static GLfloat videoScale[2] = {1, 1};
     static SharedMemory memory("/kiroku-frame", SharedMemory::Master);
+    static VideoFrame currentFrame, prevFrame;
+    static int stride = 0;
 
     GLint viewport[4];
     glGetIntegerv(GL_VIEWPORT, viewport);
@@ -302,18 +304,22 @@ extern "C" void glXSwapBuffers(Display *dpy, GLXDrawable drawable)
         videoSize[0] = viewport[2];
         videoSize[1] = viewport[3];
         loadConfig(videoSize);
+        initVideoFrame(&prevFrame, videoSize);
+
+        stride = videoSize[0]&3 ? (videoSize[0]&0xfffffffc)+4 : videoSize[0];
+        memory.resize(stride*videoSize[1]*3+sizeof(VideoFrame));
+        initFBO(videoSize[0], videoSize[1]);
     }
 
-    int stride = videoSize[0]&3 ? (videoSize[0]&0xfffffffc)+4 : videoSize[0];
     if(viewport[2]!=size[0] || viewport[3]!=size[1])
     {
         size[0] = viewport[2];
         size[1] = viewport[3];
-        memory.resize(stride*videoSize[1]*3+sizeof(int)*2);
         cout << size[0] << "x" << size[1] << endl;
-        initFBO(videoSize[0], videoSize[1]);
         calculateScale(size, videoSize, videoScale);
     }
+
+    initVideoFrame(&currentFrame, videoSize);
 
     GLint depthTest, programOld, stencilTest, blend, activeTexture, textureBind;
     GLint packAlignment, drawFbo, readFbo, fboBind, pboBind;
@@ -344,14 +350,13 @@ extern "C" void glXSwapBuffers(Display *dpy, GLXDrawable drawable)
 
     if(data)
     {
-        ((int*)data)[0] = videoSize[0];
-        ((int*)data)[1] = videoSize[1];
+        *(VideoFrame*)data = prevFrame;
 
         glActiveTexture(GL_TEXTURE0);
         for(int i=0;i<3;i++)
         {
             glBindTexture(GL_TEXTURE_2D, yuvTex[i]);
-            glGetTexImage(GL_TEXTURE_2D, 0, GL_RED, GL_UNSIGNED_BYTE, data+(stride*videoSize[1]*i)+sizeof(int)*2);
+            glGetTexImage(GL_TEXTURE_2D, 0, GL_RED, GL_UNSIGNED_BYTE, data+(stride*videoSize[1]*i)+sizeof(VideoFrame));
         }
         memory.unlock();
 
@@ -389,6 +394,8 @@ extern "C" void glXSwapBuffers(Display *dpy, GLXDrawable drawable)
     _glBindFrameBuffer(GL_READ_FRAMEBUFFER, readFbo);
     _glBindBuffer(GL_PIXEL_PACK_BUFFER, pboBind);
     glViewport(viewport[0], viewport[1], viewport[2], viewport[3]);
+
+    prevFrame = currentFrame;
 
     _glXSwapBuffers(dpy, drawable);
 }

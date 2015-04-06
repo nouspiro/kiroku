@@ -22,7 +22,8 @@ SOURCES += main.cpp\
     recorderbin.cpp \
     busthread.cpp \
     videooverlay.cpp \
-    videocompositor.cpp
+    videocompositor.cpp \
+    ../lib/videoframe.cpp
 
 HEADERS  += mainwindow.h \
     ../lib/sharedmemory.h \

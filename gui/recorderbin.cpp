@@ -23,6 +23,7 @@
 #include <gst/video/video-info.h>
 #include <QFile>
 #include <QDebug>
+#include "../lib/videoframe.h"
 
 extern "C"
 {
@@ -103,9 +104,9 @@ VideoBin::VideoBin(int w, int h, RecorderPipeline *pipeline) : SourceBin(pipelin
     g_object_set(appsrc,
                  "stream-type", GST_APP_STREAM_TYPE_STREAM,
                  "format", GST_FORMAT_TIME,
-                 "do-timestamp", TRUE,
+                 "do-timestamp", FALSE,
                  "is-live", TRUE,
-                 "min-latency", (gint64)0,
+                 "min-latency", (gint64)20*GST_MSECOND,
                  "blocksize", (guint)info.size,
                  "max-bytes", (guint64)info.size*30, NULL);
 
@@ -124,9 +125,22 @@ VideoBin::~VideoBin()
 void VideoBin::pushFrame(const void *data)
 {
     if(enough)return;
+
+    VideoFrame *frame = (VideoFrame*)data;
+    const uchar *ptr = (const uchar*)data+sizeof(VideoFrame);
+
     void *tmp = g_malloc(info.size);
-    memcpy(tmp, data, info.size);
+    memcpy(tmp, ptr, info.size);
     GstBuffer *buffer = gst_buffer_new_wrapped(tmp, info.size);
+    GstClock *clock = gst_element_get_clock(appsrc);
+    if(clock)
+    {
+        uint64_t diff = getnanoclock()-frame->timestamp;
+        GstClockTime pts = gst_clock_get_time(clock)-gst_element_get_base_time(appsrc);
+
+        GST_BUFFER_PTS(buffer) = pts>diff ? pts-diff : 0;
+        gst_object_unref(clock);
+    }
     gst_app_src_push_buffer(GST_APP_SRC(appsrc), buffer);
 }
 

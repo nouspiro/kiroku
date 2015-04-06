@@ -13,11 +13,13 @@ TEMPLATE = lib
 DEFINES += KIROKU_LIBRARY
 
 SOURCES += ../lib/intercept.cpp \
-    ../lib/sharedmemory.cpp
+    ../lib/sharedmemory.cpp \
+    ../lib/videoframe.cpp
 
 HEADERS += ../lib/intercept.h \
     ../lib/sharedmemory.h \
-    ../lib/shaders.h
+    ../lib/shaders.h \
+    ../lib/videoframe.h
 
 LIBS += -lrt -dl
 

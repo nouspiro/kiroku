@@ -218,7 +218,7 @@ void Recorder::setupPipeline()
 
     pipeline->addToPipeline(videoEncoder, mux, sink, videoTee, filter);
 
-    if(settings.videoCodec=="x264enc")g_object_set(videoEncoder, "speed-preset", 1, "bitrate", 5000, NULL);
+    if(settings.videoCodec=="x264enc")g_object_set(videoEncoder, "speed-preset", 3, "bitrate", 5000, NULL);
     else if(settings.videoCodec=="theoraenc")g_object_set(videoEncoder, "speed-level", 3, NULL);
     else g_object_set(videoEncoder, "bitrate", 50000000, NULL);
 
