@@ -52,15 +52,17 @@ SharedMemory::SharedMemory(const char *name, Mode mode) :
 {
     strcpy(this->name, name);
 
-    std::cout << "init sharedmemory " << sizeof(SegmentHeader) << std::endl;
-
     size = sizeof(SegmentHeader);
-    fd = shm_open(name, mode==Master ? (O_CREAT | O_RDWR) : O_RDWR, S_IRUSR | S_IWUSR);
+    fd = shm_open(name, mode==Master ? (O_CREAT | O_RDWR | O_EXCL) : O_RDWR, S_IRUSR | S_IWUSR);
     if(fd<0)
     {
         err = errno;
+        std::cerr << "Failed to open shared memory" << std::endl;
         return;
     }
+
+    std::cout << "init sharedmemory " << sizeof(SegmentHeader) << std::endl;
+
     int r=0;
     if(mode==Master)r = ftruncate(fd, size);
     if(r)
