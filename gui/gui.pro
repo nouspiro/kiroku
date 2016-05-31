@@ -23,7 +23,8 @@ SOURCES += main.cpp\
     busthread.cpp \
     videooverlay.cpp \
     videocompositor.cpp \
-    ../lib/videoframe.cpp
+    ../lib/videoframe.cpp \
+    injector.cpp
 
 HEADERS  += mainwindow.h \
     ../lib/sharedmemory.h \
@@ -32,7 +33,8 @@ HEADERS  += mainwindow.h \
     recorderbin.h \
     busthread.h \
     videooverlay.h \
-    videocompositor.h
+    videocompositor.h \
+    injector.h
 
 QMAKE_CXXFLAGS += -std=gnu++0x
 
